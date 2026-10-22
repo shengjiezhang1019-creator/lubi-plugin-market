@@ -1,0 +1,35 @@
+name: Discover plugin releases
+on:
+  schedule:
+    - cron: '0 18,7 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: discover-releases
+  cancel-in-progress: false
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      # 普通 GITHUB_TOKEN 创建的 Issue 不触发后续 Actions，用 GitHub App 发起发现申请。
+      - uses: actions/create-github-app-token@v1
+        id: app
+        with:
+          app-id: ${{ secrets.MARKET_APP_ID }}
+          private-key: ${{ secrets.MARKET_APP_PRIVATE_KEY }}
+      - env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+        run: python -m market.cli discover --work .work/discovery
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: discovery
+          path: .work/discovery/

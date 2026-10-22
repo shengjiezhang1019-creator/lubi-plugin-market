@@ -1,0 +1,10 @@
+{
+  "name": "demo_plugin",
+  "version": "0.1.0",
+  "description": "验证市场静态检查的无额外依赖插件",
+  "plugin_dependencies": [],
+  "python_dependencies": [],
+  "author": {"name": "露比市场维护者"},
+  "license": "MIT",
+  "tags": ["demo"]
+}

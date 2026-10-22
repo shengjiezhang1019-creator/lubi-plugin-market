@@ -1,0 +1,190 @@
+name: Validate and review plugin
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    if: >-
+      github.event.issue.state == 'open' && !github.event.issue.pull_request &&
+      (github.event_name == 'issues' && contains(github.event.issue.body, '### 插件名称') ||
+      github.event_name == 'issue_comment' &&
+      (github.event.comment.body == '/recheck' || github.event.comment.body == '/approve' || startsWith(github.event.comment.body, '/reject ')))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      mode: ${{ steps.gate.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - id: gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -m market.cli gate --work .work/review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: request
+          path: .work/review/
+          retention-days: 7
+
+  validate:
+    needs: gate
+    if: needs.gate.outputs.mode != 'reject'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: request
+          path: .work/review
+      - name: Check configured framework source
+        id: host
+        run: |
+          python scripts/host_config.py
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.host.outputs.repository }}
+          ref: ${{ steps.host.outputs.commit }}
+          path: .work/host
+          persist-credentials: false
+          token: ${{ secrets.HOST_READ_TOKEN || github.token }}
+      - name: Validate fixed release and resolve wheel dependencies
+        run: python -m market.cli validate --host .work/host --work .work/review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validated
+          path: .work/review/
+          retention-days: 7
+
+  ai:
+    needs: [gate, validate]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: validated
+          path: .work/review
+      - name: Generate read-only AI report or reuse reviewed report for approval
+        env:
+          REVIEW_API_BASE: ${{ vars.REVIEW_API_BASE }}
+          REVIEW_MODEL: ${{ vars.REVIEW_MODEL }}
+          REVIEW_API_KEY: ${{ secrets.REVIEW_API_KEY }}
+        run: python -m market.cli ai --work .work/review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed
+          path: .work/review/
+          retention-days: 7
+
+  publish:
+    needs: [gate, ai]
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: market-index-write
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: reviewed
+          path: .work/review
+      - name: Publish report or commit manually approved version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python -m market.cli publish --work .work/review
+
+  reject:
+    needs: gate
+    if: needs.gate.outputs.mode == 'reject'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: market-index-write
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python -m market.cli reject
+
+  failure:
+    needs: [gate, validate, ai, publish, reject]
+    if: >-
+      always() && needs.gate.result == 'success' &&
+      (needs.validate.result == 'failure' || needs.ai.result == 'failure' ||
+      needs.publish.result == 'failure' || needs.reject.result == 'failure')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -m market.cli failure

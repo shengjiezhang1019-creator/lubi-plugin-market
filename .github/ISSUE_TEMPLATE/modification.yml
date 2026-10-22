@@ -1,0 +1,11 @@
+name: 修改登记信息
+description: 仓库迁移或维护者转让，由维护者核验后修改登记
+title: "[Modification] "
+body:
+  - type: textarea
+    id: modification
+    attributes:
+      label: 修改内容与归属证明
+      description: 填写已登记插件名称、原仓库、新仓库、变更原因和可公开核验的证明。不要提交 Token。
+    validations:
+      required: true

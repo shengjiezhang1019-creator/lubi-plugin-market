@@ -1,0 +1,33 @@
+name: 添加插件或发布版本
+description: 提交固定 Release，等待检查、AI 报告和维护者批准
+title: "[Plugin] "
+body:
+  - type: input
+    id: plugin_name
+    attributes:
+      label: 插件名称
+      description: 与 _manifest.json 的 name 一致
+      placeholder: weather_plugin
+    validations:
+      required: true
+  - type: input
+    id: repository
+    attributes:
+      label: GitHub 仓库
+      description: 公开 HTTPS 仓库根地址
+      placeholder: https://github.com/owner/weather-plugin
+    validations:
+      required: true
+  - type: input
+    id: tag
+    attributes:
+      label: Release 标签
+      description: 必须已公开发布正式 Release
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 补充说明
+      description: 外部服务、特殊依赖与已知限制。不要填写真实密钥。
