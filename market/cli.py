@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 
 from .ai_review import review, source_bundle, validate_response
-from .common import object_digest, read_json, repository, validate_request, version_key, write_json
+from .common import object_digest, read_json, repository, validate_request, write_json
 from .github import GitHub
 from .index import approve, build_catalog
 from .pipeline import validate
