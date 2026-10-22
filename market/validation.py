@@ -1,48 +1,33 @@
 from __future__ import annotations
 
-import ast
 import re
-import subprocess
-import sys
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from jsonschema import Draft202012Validator
 from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 
-from .common import COMMIT, NAME, read_json
+from .common import NAME, digest, object_digest, read_json
+from .rules.static_checks import _scan_python_files
+
+RULES_DIR = Path(__file__).resolve().parent / "rules"
 
 
-def framework_check(source, host, expected_commit):
-    """直接复用固定主程序中的 schema 与纯 AST 检查函数，不导入完整主程序或插件。"""
-    host = Path(host).resolve()
-    actual = subprocess.run(["git", "-C", str(host), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-    if not COMMIT.fullmatch(expected_commit) or actual != expected_commit:
-        raise ValueError("检查工具 checkout 与固定 host_commit 不一致")
-    files = ["src/plugin_system/market/validation.py", "src/plugin_system/core/loading/manifest_schema.json"]
-    for file in files:
-        subprocess.run(["git", "-C", str(host), "diff", "--exit-code", "HEAD", "--", file], check=True, capture_output=True)
+def rules_fingerprint():
+    """将本仓库规则和校验入口内容绑定到报告，不依赖主程序 commit。"""
+    files = [RULES_DIR / "__init__.py", RULES_DIR / "manifest_schema.json", RULES_DIR / "static_checks.py",
+             Path(__file__).resolve()]
+    return object_digest({path.name: digest(path.read_bytes()) for path in files})
+
+
+def framework_check(source):
+    """使用市场自带 schema 和 AST 规则，不导入主程序或待审插件。"""
     manifest = read_json(Path(source) / "_manifest.json")
-    schema = read_json(host / files[1])
+    schema = read_json(RULES_DIR / "manifest_schema.json")
     errors = sorted(Draft202012Validator(schema).iter_errors(manifest), key=lambda e: str(list(e.path)))
     if errors:
-        raise ValueError("manifest 不符合框架 schema: " + "; ".join(e.message for e in errors))
-    tree = ast.parse((host / files[0]).read_text(encoding="utf-8"))
-    names = {"Status", "CheckResult", "_scan_python_files", "_imported_modules", "_classify_import", "_dangerous_call"}
-    selected = [node for node in tree.body if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in names]
-    if {node.name for node in selected} != names:
-        raise ValueError("固定检查工具接口已变化，需要维护者适配，不能跳过")
-    namespace = {"__name__": __name__, "ast": ast, "sys": sys, "Path": Path, "dataclass": dataclass, "Enum": Enum, "Optional": Optional}
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id in {"_DANGEROUS_STDLIB", "_DANGEROUS_CALLS"}:
-                    namespace[target.id] = ast.literal_eval(node.value)
-    exec(compile(ast.Module(body=selected, type_ignores=[]), "fixed-framework-static-checks", "exec"), namespace)
-    results = namespace["_scan_python_files"](Path(source))
+        raise ValueError("manifest 不符合市场规则: " + "; ".join(e.message for e in errors))
+    results = _scan_python_files(Path(source))
     return [{"name": r.name, "status": r.status.value, "message": r.message, "location": r.location} for r in results]
 
 

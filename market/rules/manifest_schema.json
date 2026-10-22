@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maibot.local/plugin_system/manifest_schema.json",
+  "title": "MaiBot Plugin Manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "name",
+    "version",
+    "description",
+    "plugin_dependencies",
+    "author",
+    "license"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_\\-]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "plugin_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_\\-]*$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(?:(?:>=|<=|>|<|==|=|!=)?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)(?:,(?:>=|<=|>|<|==|=|!=)?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)*$"
+          }
+        }
+      },
+      "uniqueItems": true
+    },
+    "python_dependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+          "version": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "author": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "host_application": {
+      "type": "object",
+      "properties": {
+        "min_version": {
+          "type": "string",
+          "pattern": "^(?:[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)?$"
+        },
+        "max_version": {
+          "type": "string",
+          "pattern": "^(?:[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)?$"
+        }
+      }
+    }
+  }
+}

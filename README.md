@@ -10,23 +10,23 @@
 
 AI 不批准、不执行插件。首次和每次版本更新都由具有市场仓库 write/admin 权限的维护者批准。
 市场仓库已发布到 https://github.com/shengjiezhang1019-creator/lubi-plugin-market 。
-当前仍为第一版，主程序固定来源、实际服务器依赖基线与 AI 审核服务尚待配置，不等于正式收录流程已经可用。
+当前仍为第一版，实际服务器依赖基线与 AI 审核服务尚待配置，不等于正式收录流程已经可用。
 
 ## 本地开始
 
 ```powershell
 python -m pip install -e '.[dev]'
 python -m pytest -q
-python -m market.cli demo --host C:\AGI --work .work/demo
+python -m market.cli demo --work .work/demo
 ```
 
-demo 不联网、不调用 AI、不安装依赖，只验证测试源码的结构与实际主程序静态规则。
+demo 不联网、不调用 AI、不安装依赖，只验证测试源码的结构与市场自带静态规则。
 报告会标记 `static_only`，不能进入批准流程；不会给 catalog 添加虚构插件。
 
 完整远程验证（先完成下面的配置）：
 
 ```powershell
-python -m market.cli validate --host PATH_TO_FIXED_HOST_CHECKOUT --request request.json --work .work/real
+python -m market.cli validate --request request.json --work .work/real
 python -m market.cli ai --work .work/real
 ```
 
@@ -38,9 +38,8 @@ request.json：
 
 ## 需要维护者配置的真实环境
 
-1. `config/market.json` 的 `host_repository` 填可访问的主程序 GitHub 仓库或 GitHub 镜像，
-   `host_commit` 填固定的 40 位 commit。当前主程序在 GitLab，不擅自上传或虚构其 GitHub 镜像。
-   非公开工具仓库需要只读 `HOST_READ_TOKEN`。检查不读取待审仓库提供的脚本。
+1. 检查规则已内置于 `market/rules/`，无需配置主程序仓库、固定 commit、镜像或 `HOST_READ_TOKEN`。
+   规范变化时同步维护市场和主程序规则；审核报告记录规则指纹，规则变化需重新审核。
 2. 为 `config/baselines/linux-py311.txt` 提供实际服务器的完整固定基础依赖清单。
    标准环境版本应按实际部署确定；当前示范 profile 为 Ubuntu 24.04 + Python 3.11。
    正式流程缺少配置时停止，不能把 demo 当作完整审核。
@@ -102,12 +101,13 @@ request.json：
 - 网页端已接入“有更新”、手动安装／更新入口，以及详情页阶段进度、成功结果、失败原因和恢复结果展示。
   下载、校验、安装 Python 依赖、备份准备、重建配置并加载由后端实际阶段驱动；尚待真实市场浏览器联调。
 
-## 检查工具复用
+## 检查规则维护
 
-从固定主程序 checkout 读取原始 manifest schema，并抽取 `market/validation.py` 中的纯 AST 检查函数。
-不导入完整露比，也不导入第三方插件，避免配置、数据库和动态注册检查的副作用。
-工具 commit 或检查文件脏改不匹配时停止；未来主程序检查函数变更需明确适配，不静默降级。
-`python_dependencies` 已同步到当前主程序 schema 与 manifest 校验。上线选择的固定工具 commit 必须包含这些更新，不能只填写旧版 HEAD。
+`market/rules/manifest_schema.json` 与 `market/rules/static_checks.py` 是市场自身维护的规则，初始从露比当前实现同步。
+工作流直接使用市场仓库检出的规则，不再拉取主程序或执行外部仓库提供的检查脚本。
+审核不导入完整露比，也不导入第三方插件。规则文件和校验入口内容指纹写入审核报告，批准时重新校验并匹配已发布报告。
+规则变更后必须重新检查、重新审阅，再人工批准；仓库 Git 历史记录规则变更。
+`python_dependencies` 已在市场 schema 和当前主程序 schema 中支持。规范变化时需要同步修改两边并验证一致性。
 
 ## 暂时停用与后续补充
 

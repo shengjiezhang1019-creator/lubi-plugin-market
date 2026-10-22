@@ -223,7 +223,6 @@ def main():
     parser.add_argument("action", choices=["gate", "validate", "ai", "publish", "discover", "catalog", "reject", "demo", "failure"])
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--work", type=Path, default=Path(".work/current"))
-    parser.add_argument("--host", type=Path)
     parser.add_argument("--request", type=Path)
     parser.add_argument("--static-only", action="store_true")
     args = parser.parse_args()
@@ -233,7 +232,7 @@ def main():
     if args.action == "gate":
         gate(args)
     elif args.action == "validate":
-        validate(args.root, read_json(args.request or args.work / "request.json"), args.work, args.host, static_only=args.static_only)
+        validate(args.root, read_json(args.request or args.work / "request.json"), args.work, static_only=args.static_only)
     elif args.action == "ai":
         validation = read_json(args.work / "validation.json")
         if (args.work / "previous-ai.json").exists():
@@ -261,14 +260,11 @@ def main():
             "本次市场任务未完成，未确认上架成功。请查看工作流日志并修正配置或申请后重试：\n\n"
             + f"https://github.com/{slug}/actions/runs/{run_id}")
     elif args.action == "demo":
-        if not args.host:
-            raise ValueError("demo 需要 --host 指向本地主程序仓库")
-        # 使用临时市场配置，不把本机路径或 GitLab 地址写入待发布配置。
+        # 临时元数据保持正式 registry/catalog 不变；规则直接使用本仓库版本。
         with tempfile.TemporaryDirectory(prefix="demo-meta-", dir=args.work) as temporary:
             root = Path(temporary)
             (root / "config").mkdir()
             config = read_json(args.root / "config/market.json")
-            config["host_commit"] = subprocess.run(["git", "-C", str(args.host), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
             write_json(root / "config/market.json", config)
             write_json(root / "registry.json", {"schema_version": 1, "plugins": {}})
             buffer = io.BytesIO()
@@ -277,7 +273,7 @@ def main():
                     if file.is_file():
                         archive.write(file, "demo/" + file.relative_to(args.root / "examples/demo_plugin").as_posix())
             req = {"plugin_name": "demo_plugin", "repository": "https://github.com/example/demo-plugin", "tag": "v0.1.0"}
-            result, source = validate(root, req, args.work, args.host, static_only=True, archive_data=buffer.getvalue(), commit="a" * 40)
+            result, source = validate(root, req, args.work, static_only=True, archive_data=buffer.getvalue(), commit="a" * 40)
             print(json.dumps({"status": result["status"], "fingerprint": result["fingerprint"], "note": "本地离线静态演示；未访问 GitHub、未调用 AI、未解析生产依赖，不能用于批准"}, ensure_ascii=False))
 
 

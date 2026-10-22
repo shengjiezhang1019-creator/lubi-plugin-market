@@ -1,9 +1,12 @@
 {
   "schema_version": 1,
-  "host_repository": "",
-  "host_commit": "",
   "profiles": [
-    {"id": "linux-py311", "runner": "ubuntu-24.04", "python": "3.11", "baseline": "config/baselines/linux-py311.txt"}
+    {
+      "id": "linux-py311",
+      "runner": "ubuntu-24.04",
+      "python": "3.11",
+      "baseline": "config/baselines/linux-py311.txt"
+    }
   ],
   "max_archive_bytes": 16777216,
   "max_review_bytes": 400000

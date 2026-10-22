@@ -4,7 +4,7 @@
 
 - 独立 Python 项目、空的正式 registry/catalog、示例插件和 Issue 表单。
 - 固定 GitHub Release → commit → 限额 ZIP 下载、安全解压及 SHA256。
-- 复用固定主程序 schema 与纯静态函数，不启动主程序或插件。
+- 仓库内置 manifest schema 与纯 AST 静态规则，不拉取主程序、不启动主程序或插件；规则内容指纹绑定审核报告。
 - manifest `python_dependencies` 严格校验、标准环境 wheel 解析与临时安装、具体版本和哈希记录。
 - 通用兼容 API 的 AI 源码审核调用、中文提示词、完整性与源码位置校验。
 - 全部归档文件送审（含隐藏目录、无扩展名和非 Python 脚本）；二进制、不可读编码和超额内容阻止审核，阅读清单遗漏标记未完成并阻止批准，复用旧报告同样检查。
@@ -30,18 +30,17 @@
 ## 本地已验证
 
 - 单元和离线集成测试（仓库身份、恶意 ZIP、依赖约束、审批绑定与索引、AI 报告、工作流结构）。
-- 使用实际 `C:\AGI` 固定 HEAD 的 schema 和静态规则运行 demo；标记 static_only，不能批准。
+- 使用市场自带规则运行离线 demo；标记 static_only，不能批准，也不要求外部主程序 checkout。
 - 测试不访问 GitHub、不调用收费模型、不生成实际收录、不向远程写入。
 
 ## 推送前需要配置 / 线上待验证
 
 - GitHub 公开仓库已建立：`shengjiezhang1019-creator/lubi-plugin-market`，本地 `main` 已推送并跟踪 `origin/main`；Actions 审核写入权限与真实批准流程仍待验证。
-- 主程序固定 GitHub 仓库或镜像及 commit；当前主程序的 GitLab 地址不能直接交给 checkout action。
 - 实际服务器 OS/Python 基线（包含完整固定依赖）；示范 Ubuntu/Python 3.11 不代表已确定生产环境。
 - AI 供应商地址、模型与密钥；定时发现的 GitHub App。
 - 在线公开 Release 下载、实际完整基础依赖解析和安装、真实模型报告、Issue 触发及 push 权限。
 - 主程序端自动安装库、配置重建、插件启用状态与前端入口的真实端到端联调，包括进度、失败原因和恢复结果展示。
-- 固定的主程序工具 commit 必须包含最新 `python_dependencies` schema 与静态检查接口，不能使用尚未包含本地实现的旧提交。
+- 维护市场内置规则与露比主程序规范的一致性；不再配置主程序仓库、host commit 或只读访问令牌。
 - 仓库迁移/转让的批量历史记录迁移工具未实现；当前表单收集后人工处理，不宣称自动迁移。
 
 市场脚本不能保证插件功能正确、任意插件组合兼容，也不能回滚整个 Python 环境。

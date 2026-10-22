@@ -63,19 +63,8 @@ jobs:
         with:
           name: request
           path: .work/review
-      - name: Check configured framework source
-        id: host
-        run: |
-          python scripts/host_config.py
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ steps.host.outputs.repository }}
-          ref: ${{ steps.host.outputs.commit }}
-          path: .work/host
-          persist-credentials: false
-          token: ${{ secrets.HOST_READ_TOKEN || github.token }}
-      - name: Validate fixed release and resolve wheel dependencies
-        run: python -m market.cli validate --host .work/host --work .work/review
+      - name: Validate fixed release with bundled rules and resolve wheel dependencies
+        run: python -m market.cli validate --work .work/review
       - uses: actions/upload-artifact@v4
         with:
           name: validated

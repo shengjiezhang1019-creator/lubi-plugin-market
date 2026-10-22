@@ -8,10 +8,10 @@ from .archive import download, unpack
 from .common import COMMIT, assert_binding, object_digest, read_json, validate_request, write_json
 from .dependencies import resolve
 from .github import GitHub
-from .validation import framework_check, manifest_check
+from .validation import framework_check, manifest_check, rules_fingerprint
 
 
-def validate(root, request, work, host, *, static_only=False, archive_data=None, commit=None, release=None):
+def validate(root, request, work, *, static_only=False, archive_data=None, commit=None, release=None):
     root, work = Path(root), Path(work)
     request = validate_request(request)
     assert_binding(root, request)
@@ -23,7 +23,7 @@ def validate(root, request, work, host, *, static_only=False, archive_data=None,
         raise ValueError("commit 不合法")
     source, sha256 = unpack(archive_data, work / "source")
     manifest = manifest_check(source, request)
-    checks = framework_check(source, host, config["host_commit"])
+    checks = framework_check(source)
     if any(r["status"] == "fail" for r in checks):
         raise ValueError("框架静态检查失败：" + str(checks))
     profile = config["profiles"][0]
@@ -36,7 +36,7 @@ def validate(root, request, work, host, *, static_only=False, archive_data=None,
         lock = None
     report = {"schema_version": 1, "status": "static_only" if static_only else "validated", "request": request,
               "commit": commit, "sha256": sha256, "manifest": manifest, "checks": checks,
-              "host_commit": config["host_commit"], "dependency_status": "skipped" if static_only else "resolved",
+              "rules_fingerprint": rules_fingerprint(), "dependency_status": "skipped" if static_only else "resolved",
               "dependency_lock": lock, "release_notes": (release or {}).get("body", ""),
               "published_at": (release or {}).get("published_at", ""),
               "source_dir": str(source.relative_to(work).as_posix())}
