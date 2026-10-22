@@ -37,7 +37,7 @@
 
 - GitHub 公开仓库已建立：`shengjiezhang1019-creator/lubi-plugin-market`，本地 `main` 已推送并跟踪 `origin/main`；Actions 审核写入权限与真实批准流程仍待验证。
 - 统一固定基线与 wheel 清单方案已取消，安装以每个实际运行环境为准；不需要上传本地 143 包快照。
-- AI 审核服务已配置并核验 Variables/Secret 存在：百炼兼容接口、`deepseek-v4-pro-0813`、`REVIEW_API_KEY`；尚未实际调用模型，响应格式与审核链路待验证。密钥不写入仓库。
+- AI 审核服务已配置并核验 Variables/Secret 存在：百炼兼容接口、`deepseek-v4-pro-0813`、`REVIEW_API_KEY`；本地和 GitHub Actions 示例真实调用均已通过，JSON 结构与完整文件阅读检查通过；正式申请及批准链路待验证。密钥不写入仓库。
 - 定时发现所需 GitHub App 仍待配置。
 - 在线公开 Release 下载、实际运行环境依赖补装、真实模型报告、Issue 触发及 push 权限。
 - 主程序端自动安装库、配置重建、插件启用状态与前端入口的真实端到端联调，包括进度、失败原因和恢复结果展示。
@@ -49,3 +49,9 @@
 ## 依赖策略更新
 
 采用 MaiBot 形式：已有版本沿用并警告不匹配，缺失才补装；安装前约束全部已安装版本，避免直接或间接依赖热替换。市场不再证明依赖已安装或功能正确；补装失败仍尝试正常加载，加载失败才按现有事务恢复插件和配置。共享库不回滚。
+
+## 真实 AI 验证记录
+
+2026-10-22：本地真实模型审核通过；GitHub Actions `AI review smoke test` 运行成功，确认 Variables 和 Secret 可用。
+仅审核示例，不发布、批准或修改索引；不是正式插件安装运行验证。
+运行记录：https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/39750078123

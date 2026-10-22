@@ -10,7 +10,7 @@
 
 AI 不批准、不执行插件。首次和每次版本更新都由具有市场仓库 write/admin 权限的维护者批准。
 市场仓库已发布到 https://github.com/shengjiezhang1019-creator/lubi-plugin-market 。
-当前仍为第一版，AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，真实模型审核和正式收录链路尚待验证。
+当前仍为第一版，AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，本地及 GitHub Actions 示例真实 AI 审核已通过，正式 Release 申请与人工批准收录链路尚待验证。
 
 ## 本地开始
 
@@ -44,7 +44,7 @@ request.json：
    市场只做格式、源码与依赖声明检查，不声称已经验证依赖安装或跨平台运行。
 3. Repository Variables：`REVIEW_API_BASE`（如供应商的 HTTPS OpenAI-compatible v1 地址）、
    `REVIEW_MODEL`；Secret：`REVIEW_API_KEY`。CLI 使用通用兼容请求，不预设模型或收费账号。
-   当前仓库已配置：百炼兼容接口 `https://dashscope.aliyuncs.com/compatible-mode/v1`，模型 `deepseek-v4-pro-0813`；密钥仅存 GitHub Secret。尚未实际调用模型。
+   当前仓库已配置：百炼兼容接口 `https://dashscope.aliyuncs.com/compatible-mode/v1`，模型 `deepseek-v4-pro-0813`；密钥仅存 GitHub Secret。已通过真实示例审核：模型返回有效 JSON 且完成全部文件阅读校验。
 4. 定时发现需要 `MARKET_APP_ID`、`MARKET_APP_PRIVATE_KEY` 对应的 GitHub App，授予市场仓库
    Contents read、Issues read/write。使用 App 创建的 Issue 才能触发后续审核工作流。
    未配置时可以由作者直接提交 Issue，不影响手工申请。
@@ -121,3 +121,10 @@ request.json：
 - 插件间依赖：市场安装器已注释“声明 `plugin_dependencies` 就拒绝安装”的旧拦截。市场端“依赖已满足则允许、缺失则列出插件名和版本要求、由用户手动安装”的引导暂缓实现。
   运行时依赖图和加载顺序检查仍保留，依赖缺失或版本不符仍可能在加载阶段失败并触发安装回滚；不自动安装依赖插件。
 - 以上暂缓项不影响 Python 库的自动安装及冲突校验，也不代表完整兼容策略或依赖引导已经实现。
+
+## 真实 AI 冒烟验证
+
+2026-10-22 本地和 GitHub Actions 真实调用均通过，使用百炼 `deepseek-v4-pro-0813` 审核公开的 `examples/demo_plugin`。
+测试不创建申请、不发表评论、不批准或修改正式索引，验证报告保留 `static_only`，不能用作收录凭证。
+手动运行 Actions 的 `AI review smoke test` 可复测（会产生模型调用费用）。
+本次运行：https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/39750078123，报告保存在该次运行的 `ai-review-smoke` artifact（保留 7 天）。
