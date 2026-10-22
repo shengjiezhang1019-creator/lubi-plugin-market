@@ -26,7 +26,7 @@ def build_catalog(root):
         catalog.append({"id": name, "repositoryUrl": registered["repository"], "commit": validation["commit"],
                         "sha256": validation["sha256"], "manifest": validation["manifest"],
                         "tags": validation["manifest"].get("tags", []), "comp_types": validation["manifest"].get("comp_types", []),
-                        "dependency_lock": validation["dependency_lock"],
+                        "dependency_policy": validation.get("dependency_policy", {"policy": "runtime-environment-v1"}),
                         "release_notes": validation["release_notes"], "published_at": validation["published_at"]})
     write_json(root / "catalog.json", catalog)
     return catalog
@@ -34,8 +34,8 @@ def build_catalog(root):
 
 def approve(root, validation, ai, actor, issue_number):
     root = Path(root)
-    if validation.get("status") != "validated" or validation.get("dependency_status") != "resolved":
-        raise ValueError("未完成正式静态与依赖验证，不能收录")
+    if validation.get("status") != "validated" or validation.get("dependency_status") != "runtime":
+        raise ValueError("未完成正式静态与依赖声明检查，不能收录")
     canonical = dict(validation)
     fingerprint = canonical.pop("fingerprint")
     if fingerprint != object_digest(canonical):

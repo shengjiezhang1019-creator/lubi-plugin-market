@@ -63,7 +63,7 @@ jobs:
         with:
           name: request
           path: .work/review
-      - name: Validate fixed release with bundled rules and resolve wheel dependencies
+      - name: Validate fixed release and dependency declarations with bundled rules
         run: python -m market.cli validate --work .work/review
       - uses: actions/upload-artifact@v4
         with:

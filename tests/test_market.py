@@ -12,7 +12,7 @@ from market.ai_review import source_bundle, validate_response
 from market.archive import unpack
 from market.cli import issue_request, trusted_marker
 from market.common import assert_binding, object_digest, read_json, repository, validate_request, write_json
-from market.dependencies import baseline_requirements, resolve
+from market.dependencies import declaration_report
 from market.github import GitHub
 from market.index import approve, build_catalog
 from market.validation import manifest_check
@@ -30,7 +30,7 @@ def request(name="demo_plugin", tag="v1.0.0"):
 
 
 def validated(tag="v1.0.0"):
-    result = {"status": "validated", "dependency_status": "resolved", "request": request(tag=tag),
+    result = {"status": "validated", "dependency_status": "runtime", "request": request(tag=tag),
               "commit": "a" * 40, "sha256": "b" * 64,
               "manifest": {"name": "demo_plugin", "version": tag[1:]},
               "dependency_lock": {"packages": []}, "release_notes": "", "published_at": ""}
@@ -211,39 +211,12 @@ def test_comment_does_not_emit_commands_or_mentions(monkeypatch):
         api.comment("a/b", 1, "x" * 60001)
 
 
-def test_dependency_baseline_must_be_explicit_and_pinned(tmp_path):
-    path = tmp_path / "baseline.txt"
-    for text in ("", "httpx>=0.28", "-r other.txt", "x @ https://evil"):
-        path.write_text(text)
-        with pytest.raises(ValueError):
-            baseline_requirements(path)
-    path.write_text("httpx==0.28.1\n# comment\n")
-    assert baseline_requirements(path) == {"httpx": "0.28.1"}
-
-
-def test_dependency_resolution_does_not_run_shell_or_build(monkeypatch, tmp_path):
-    baseline = tmp_path / "base.txt"
-    baseline.write_text("httpx==0.28.1\n")
-    commands = []
-    def run(command, **kwargs):
-        commands.append(command)
-        if "download" in command:
-            destination = Path(command[command.index("-d") + 1])
-            destination.mkdir()
-            (destination / "httpx-0.28.1-py3-none-any.whl").write_bytes(b"test-wheel")
-        else:
-            destination = Path(command[command.index("--target") + 1]) / "httpx-0.28.1.dist-info"
-            destination.mkdir(parents=True)
-            (destination / "METADATA").write_text("Metadata-Version: 2.1\nName: httpx\nVersion: 0.28.1\n")
-        return type("Result", (), {"returncode": 0})()
-    monkeypatch.setattr("market.dependencies.subprocess.run", run)
-    lock = resolve({"python_dependencies": []}, baseline, "test")
-    assert "--only-binary=:all:" in commands[0]
-    assert "--isolated" in commands[0]
-    assert "--require-hashes" in commands[1] and "--no-index" in commands[1]
-    assert lock["validation"] == "wheel-installation"
-    assert lock["runtime_tested"] is False
-    assert lock["packages"][0]["version"] == "0.28.1"
+def test_dependency_policy_does_not_claim_installation_validation():
+    report = declaration_report({"python_dependencies": [{"name": "jieba", "version": ">=0.42.1"}]})
+    assert report["policy"] == "runtime-environment-v1"
+    assert report["declared"] == [{"name": "jieba", "version": ">=0.42.1"}]
+    assert report["installation_tested"] is False
+    assert report["runtime_tested"] is False
 
 
 def test_workflows_are_valid_yaml():
@@ -255,3 +228,20 @@ def test_workflows_are_valid_yaml():
     market = yaml.load((root / ".github/workflows/market.yml").read_text(), Loader=yaml.BaseLoader)
     assert market["jobs"]["ai"]["permissions"]["contents"] == "read"
     assert market["jobs"]["publish"]["concurrency"]["group"] == "market-index-write"
+
+
+def test_catalog_no_longer_distributes_fixed_dependency_lock(root):
+    validation = validated()
+    approve(root, validation, ai(validation), "maintainer", 1)
+    catalog = read_json(root / "catalog.json")
+    assert "dependency_lock" not in catalog[0]
+    assert catalog[0]["dependency_policy"]["policy"] == "runtime-environment-v1"
+
+
+def test_old_dependency_validation_policy_cannot_be_approved(root):
+    validation = validated()
+    validation["dependency_status"] = "resolved"
+    validation.pop("fingerprint")
+    validation["fingerprint"] = object_digest(validation)
+    with pytest.raises(ValueError, match="依赖声明检查"):
+        approve(root, validation, ai(validation), "maintainer", 1)

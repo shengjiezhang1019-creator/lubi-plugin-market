@@ -105,7 +105,7 @@ def publish(args):
         api.comment(slug, number, f"已收录 {request['plugin_name']} {request['tag']}，commit `{validation['commit']}`。")
         api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
     else:
-        report = "## 静态与依赖检查通过，等待维护者审核\n\n"
+        report = "## 静态与依赖声明检查通过，等待维护者审核\n\n"
         report += f"插件：{request['plugin_name']}，版本：{request['tag']}\n\ncommit：`{validation['commit']}`\n\n"
         report += "AI 报告仅供参考，不自动上架。\n\n```json\n" + json.dumps(ai, ensure_ascii=False, indent=2) + "\n```\n"
         # 原始完整 AI JSON 存放在机器人评论的独立机器可读标记；不作为 shell 或批准指令。
@@ -274,7 +274,7 @@ def main():
                         archive.write(file, "demo/" + file.relative_to(args.root / "examples/demo_plugin").as_posix())
             req = {"plugin_name": "demo_plugin", "repository": "https://github.com/example/demo-plugin", "tag": "v0.1.0"}
             result, source = validate(root, req, args.work, static_only=True, archive_data=buffer.getvalue(), commit="a" * 40)
-            print(json.dumps({"status": result["status"], "fingerprint": result["fingerprint"], "note": "本地离线静态演示；未访问 GitHub、未调用 AI、未解析生产依赖，不能用于批准"}, ensure_ascii=False))
+            print(json.dumps({"status": result["status"], "fingerprint": result["fingerprint"], "note": "本地离线静态演示；未访问 GitHub、未调用 AI、未安装依赖或验证插件运行，不能用于批准"}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

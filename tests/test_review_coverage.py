@@ -37,7 +37,7 @@ def test_missing_file_downgrades_completion_and_blocks_approval(tmp_path):
     result = validate_response(report(), "a" * 40, {"plugin.py", "_manifest.json", "README.md", "helper.sh"})
     assert result["status"] == "incomplete"
     assert "README.md" in result["limitations"] and "helper.sh" in result["limitations"]
-    validation = {"status": "validated", "dependency_status": "resolved", "commit": "a" * 40}
+    validation = {"status": "validated", "dependency_status": "runtime", "commit": "a" * 40}
     validation["fingerprint"] = object_digest(validation)
     result["validation_fingerprint"] = validation["fingerprint"]
     with pytest.raises(ValueError, match="完整 AI 报告"):

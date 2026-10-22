@@ -11,7 +11,7 @@ def prepare(tmp_path, monkeypatch):
     root = tmp_path / "market"
     work = tmp_path / "work"
     request = {"plugin_name": "demo_plugin", "repository": "https://github.com/a/b", "tag": "v1.0.0"}
-    validation = {"status": "validated", "dependency_status": "resolved", "request": request,
+    validation = {"status": "validated", "dependency_status": "runtime", "request": request,
                   "commit": "a" * 40, "sha256": "b" * 64, "manifest": {"name": "demo_plugin", "version": "1.0.0"},
                   "dependency_lock": {}, "release_notes": "", "published_at": ""}
     validation["fingerprint"] = object_digest(validation)
