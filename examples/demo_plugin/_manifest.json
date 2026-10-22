@@ -6,5 +6,6 @@
   "python_dependencies": [],
   "author": {"name": "露比市场维护者"},
   "license": "MIT",
-  "tags": ["demo"]
+  "tags": ["demo"],
+  "comp_types": []
 }

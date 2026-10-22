@@ -9,14 +9,20 @@ from packaging.utils import canonicalize_name
 
 from .common import NAME, digest, object_digest, read_json
 from .rules.static_checks import _scan_python_files
+from .rules.component_types import check_component_types
 
 RULES_DIR = Path(__file__).resolve().parent / "rules"
 
 
 def rules_fingerprint():
     """将本仓库规则和校验入口内容绑定到报告，不依赖主程序 commit。"""
-    files = [RULES_DIR / "__init__.py", RULES_DIR / "manifest_schema.json", RULES_DIR / "static_checks.py",
-             Path(__file__).resolve()]
+    files = [
+        RULES_DIR / "__init__.py",
+        RULES_DIR / "manifest_schema.json",
+        RULES_DIR / "static_checks.py",
+        RULES_DIR / "component_types.py",
+        Path(__file__).resolve(),
+    ]
     return object_digest({path.name: digest(path.read_bytes()) for path in files})
 
 
@@ -28,6 +34,7 @@ def framework_check(source):
     if errors:
         raise ValueError("manifest 不符合市场规则: " + "; ".join(e.message for e in errors))
     results = _scan_python_files(Path(source))
+    results.extend(check_component_types(Path(source), manifest["comp_types"]))
     return [{"name": r.name, "status": r.status.value, "message": r.message, "location": r.location} for r in results]
 
 

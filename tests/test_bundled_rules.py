@@ -63,7 +63,7 @@ def test_report_binds_bundled_rules_without_external_host(tmp_path):
 def test_changed_rule_content_changes_fingerprint(tmp_path, monkeypatch):
     from market import validation
 
-    for name in ("__init__.py", "manifest_schema.json", "static_checks.py"):
+    for name in ("__init__.py", "manifest_schema.json", "static_checks.py", "component_types.py"):
         (tmp_path / name).write_text("original", encoding="utf-8")
     monkeypatch.setattr(validation, "RULES_DIR", tmp_path)
     before = rules_fingerprint()
@@ -80,8 +80,13 @@ def test_workflow_does_not_checkout_external_host():
     assert "host_repository" not in read_json(ROOT / "config/market.json")
 
 
-def test_schema_initially_matches_host_when_locally_available():
+def test_market_requires_component_types_but_host_preserves_legacy_plugins():
     host = Path("C:/AGI/src/plugin_system/core/loading/manifest_schema.json")
     if not host.is_file():
         pytest.skip("可选的一致性检查：当前机器没有露比主程序源码")
-    assert read_json(ROOT / "market/rules/manifest_schema.json") == read_json(host)
+    market_schema = read_json(ROOT / "market/rules/manifest_schema.json")
+    host_schema = read_json(host)
+    assert "comp_types" in market_schema["required"]
+    assert "comp_types" not in host_schema["required"]
+    market_schema["required"].remove("comp_types")
+    assert market_schema == host_schema

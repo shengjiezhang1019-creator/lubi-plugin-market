@@ -10,9 +10,15 @@
     "description",
     "plugin_dependencies",
     "author",
-    "license"
+    "license",
+    "comp_types"
   ],
   "properties": {
+    "comp_types": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "enum": ["command", "tool", "event"]}
+    },
     "name": {
       "type": "string",
       "minLength": 1,
