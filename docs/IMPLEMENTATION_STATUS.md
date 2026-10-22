@@ -37,7 +37,8 @@
 
 - GitHub 公开仓库已建立：`shengjiezhang1019-creator/lubi-plugin-market`，本地 `main` 已推送并跟踪 `origin/main`；Actions 审核写入权限与真实批准流程仍待验证。
 - 统一固定基线与 wheel 清单方案已取消，安装以每个实际运行环境为准；不需要上传本地 143 包快照。
-- AI 供应商地址、模型与密钥；定时发现的 GitHub App。
+- AI 审核服务已配置并核验 Variables/Secret 存在：百炼兼容接口、`deepseek-v4-pro-0813`、`REVIEW_API_KEY`；尚未实际调用模型，响应格式与审核链路待验证。密钥不写入仓库。
+- 定时发现所需 GitHub App 仍待配置。
 - 在线公开 Release 下载、实际运行环境依赖补装、真实模型报告、Issue 触发及 push 权限。
 - 主程序端自动安装库、配置重建、插件启用状态与前端入口的真实端到端联调，包括进度、失败原因和恢复结果展示。
 - 维护市场内置规则与露比主程序规范的一致性；不再配置主程序仓库、host commit 或只读访问令牌。

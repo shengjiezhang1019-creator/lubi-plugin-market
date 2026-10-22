@@ -10,7 +10,7 @@
 
 AI 不批准、不执行插件。首次和每次版本更新都由具有市场仓库 write/admin 权限的维护者批准。
 市场仓库已发布到 https://github.com/shengjiezhang1019-creator/lubi-plugin-market 。
-当前仍为第一版，AI 审核服务尚待配置，不等于正式收录流程已经可用。
+当前仍为第一版，AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，真实模型审核和正式收录链路尚待验证。
 
 ## 本地开始
 
@@ -44,6 +44,7 @@ request.json：
    市场只做格式、源码与依赖声明检查，不声称已经验证依赖安装或跨平台运行。
 3. Repository Variables：`REVIEW_API_BASE`（如供应商的 HTTPS OpenAI-compatible v1 地址）、
    `REVIEW_MODEL`；Secret：`REVIEW_API_KEY`。CLI 使用通用兼容请求，不预设模型或收费账号。
+   当前仓库已配置：百炼兼容接口 `https://dashscope.aliyuncs.com/compatible-mode/v1`，模型 `deepseek-v4-pro-0813`；密钥仅存 GitHub Secret。尚未实际调用模型。
 4. 定时发现需要 `MARKET_APP_ID`、`MARKET_APP_PRIVATE_KEY` 对应的 GitHub App，授予市场仓库
    Contents read、Issues read/write。使用 App 创建的 Issue 才能触发后续审核工作流。
    未配置时可以由作者直接提交 Issue，不影响手工申请。
