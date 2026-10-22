@@ -35,7 +35,7 @@
 
 ## 推送前需要配置 / 线上待验证
 
-- 市场 GitHub 账号、仓库和权限。
+- GitHub 公开仓库已建立：`shengjiezhang1019-creator/lubi-plugin-market`，本地 `main` 已推送并跟踪 `origin/main`；Actions 审核写入权限与真实批准流程仍待验证。
 - 主程序固定 GitHub 仓库或镜像及 commit；当前主程序的 GitLab 地址不能直接交给 checkout action。
 - 实际服务器 OS/Python 基线（包含完整固定依赖）；示范 Ubuntu/Python 3.11 不代表已确定生产环境。
 - AI 供应商地址、模型与密钥；定时发现的 GitHub App。
