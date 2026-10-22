@@ -1,1 +1,51 @@
-[]
+[
+  {
+    "commit": "5cbbf9ae486418810cc639ad0f44a90195b3a985",
+    "comp_types": [],
+    "dependency_policy": {
+      "declared": [
+        {
+          "name": "aiohttp",
+          "version": ">=3.12.14"
+        }
+      ],
+      "installation_tested": false,
+      "policy": "runtime-environment-v1",
+      "runtime_tested": false
+    },
+    "id": "game_news",
+    "manifest": {
+      "author": {
+        "name": "zhangshengjie-xsw"
+      },
+      "category": "information",
+      "description": "露比游戏新闻台：按请求获取游戏资讯，供露比讲述并展示原文来源",
+      "license": "MIT",
+      "name": "game_news",
+      "plugin_dependencies": [],
+      "python_dependencies": [
+        {
+          "name": "aiohttp",
+          "version": ">=3.12.14"
+        }
+      ],
+      "tags": [
+        "游戏",
+        "新闻",
+        "command",
+        "hook"
+      ],
+      "version": "0.1.0"
+    },
+    "published_at": "2026-10-22T09:52:07Z",
+    "release_notes": "首个公开版本。\r\n\r\n- 请求“播报游戏新闻”时读取 indienova 公开 RSS，默认提供最近 48 小时内最新三条资讯。\r\n- 通过 BEFORE_REPLY_CONTEXT Hook Command 提供资料，由露比原有回复模型讲述。\r\n- 网页组件调用详情展示标题、发布时间、来源、摘要和原文链接。\r\n- 内存缓存、日期过滤、重复链接过滤及获取失败提示。\r\n\r\n依赖：aiohttp>=3.12.14，在 _manifest.json 的 python_dependencies 声明。\r\n宿主要求：支持 BEFORE_REPLY_CONTEXT 的露比；不适用于原版 MaiBot，也不覆盖独立 PFC 私聊回复器。\r\n\r\n验证：本地 43 项插件与接入测试通过，真实 RSS 获取成功。市场安装、实际口播和网页展示仍待首次审核后联调。\r\n\r\n此 Release 不代表已经通过插件市场审核。",
+    "repositoryUrl": "https://github.com/zhangshengjie-xsw/lubi-game-news",
+    "sha256": "e1d30136837c31825eb4cb4f44e36a7cafadb7810053432a1b05e9ecd59d026b",
+    "tags": [
+      "游戏",
+      "新闻",
+      "command",
+      "hook"
+    ]
+  }
+]
