@@ -1,24 +1,4 @@
 {
-  "plugins": {
-    "game_news": {
-      "issue_number": 1,
-      "moderation": {
-        "action": "withdraw",
-        "actor": "shengjiezhang1019-creator",
-        "at": "2026-10-23T06:49:18.311878+00:00",
-        "reason": "1"
-      },
-      "moderation_history": [
-        {
-          "action": "withdraw",
-          "actor": "shengjiezhang1019-creator",
-          "at": "2026-10-23T06:49:18.311878+00:00",
-          "reason": "1"
-        }
-      ],
-      "repository": "https://github.com/zhangshengjie-xsw/lubi-game-news",
-      "status": "withdrawn"
-    }
-  },
+  "plugins": {},
   "schema_version": 1
 }
