@@ -36,7 +36,7 @@ body:
     id: hooks
     attributes:
       label: 使用的 Hook
-      description: 选择代码中实际绑定的 Hook，可多选；此项可留空。
+      description: 请选择代码中实际绑定的 Hook，至少选择一项，可多选。
       multiple: true
       options:
         - "AFTER_DANMAKU_REPLY_GENERATION — 弹幕回复生成后的处理"
@@ -52,7 +52,7 @@ body:
         - "MESSAGE_INGRESS — 标准消息接入"
         - "PFC_CONTEXT_GATHERING — 向 PFC 规划模型提供上下文工具"
     validations:
-      required: false
+      required: true
   - type: textarea
     id: notes
     attributes:

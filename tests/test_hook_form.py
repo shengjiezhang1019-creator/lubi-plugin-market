@@ -11,7 +11,7 @@ def test_hook_choices_match_published_contracts():
     field = next(item for item in form["body"] if item.get("id") == "hooks")
     assert field["type"] == "dropdown"
     assert field["attributes"]["multiple"] is True
-    assert field["validations"]["required"] is False
+    assert field["validations"]["required"] is True
     assert "default" not in field["attributes"]
     hooks = json.loads((ROOT / "docs/hook-contracts.json").read_text(encoding="utf-8"))["hooks"]
     assert field["attributes"]["options"] == [h["id"] + " — " + h["label"] for h in hooks]
