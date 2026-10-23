@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -61,8 +62,11 @@ class GitHub:
     def comment(self, slug, number, text):
         # 不让模型评论成为审批命令，不额外 @ 通知用户。
         text = text.replace("@", "＠")
-        for command in ("/approve", "/ap", "/reject", "/recheck", "/mai_review"):
-            text = text.replace(command, command.replace("/", "／"))
+        # 只过滤独立命令行；不能破坏源码链接或机器可读 base64 内部的斜线。
+        text = re.sub(
+            r"(?m)^([ \t]*)(/approve|/ap|/reject|/recheck|/mai_review)(?=\s|$)",
+            lambda match: match[1] + match[2].replace("/", "／"), text,
+        )
         if len(text) > 60000:
             raise ValueError("审核评论超限，不截断批准绑定信息；请缩短报告后重试")
         return self.request(f"/repos/{slug}/issues/{int(number)}/comments", "POST", {"body": text})

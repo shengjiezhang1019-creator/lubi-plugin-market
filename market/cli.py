@@ -17,6 +17,7 @@ from .common import object_digest, read_json, repository, validate_request, writ
 from .github import GitHub
 from .index import approve, build_catalog
 from .pipeline import validate
+from .review_report import render_review
 
 MARKER = "<!-- lubi-market-validation:"
 
@@ -105,9 +106,7 @@ def publish(args):
         api.comment(slug, number, f"已收录 {request['plugin_name']} {request['tag']}，commit `{validation['commit']}`。")
         api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
     else:
-        report = "## 静态与依赖声明检查通过，等待维护者审核\n\n"
-        report += f"插件：{request['plugin_name']}，版本：{request['tag']}\n\ncommit：`{validation['commit']}`\n\n"
-        report += "AI 报告仅供参考，不自动上架。\n\n```json\n" + json.dumps(ai, ensure_ascii=False, indent=2) + "\n```\n"
+        report = render_review(validation, ai, request)
         # 原始完整 AI JSON 存放在机器人评论的独立机器可读标记；不作为 shell 或批准指令。
         import base64
         payload = base64.b64encode(json.dumps(ai, ensure_ascii=False, sort_keys=True).encode()).decode()
