@@ -5,6 +5,8 @@ import json
 import os
 import re
 import tempfile
+
+from .availability import is_active
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -72,6 +74,8 @@ def assert_binding(root, request):
         if name.casefold() == request["plugin_name"].casefold():
             if name != request["plugin_name"] or repository(entry["repository"]) != request["repository"]:
                 raise ValueError("插件名称已绑定其他仓库，迁移必须走修改登记流程")
+            if not is_active(entry):
+                raise ValueError("插件已下架，须由维护者恢复后才能审核或批准新版本")
 
 
 def version_key(value):

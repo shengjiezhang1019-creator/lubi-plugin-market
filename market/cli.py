@@ -13,6 +13,7 @@ import zipfile
 from pathlib import Path
 
 from .ai_review import review, source_bundle, validate_response
+from .availability import is_active
 from .common import object_digest, read_json, repository, validate_request, write_json
 from .github import GitHub
 from .index import approve, build_catalog
@@ -172,6 +173,8 @@ def discover(args):
         existing.add((item["plugin_name"], item["repository"], item["tag"]))
     errors = []
     for name, entry in read_json(args.root / "registry.json")["plugins"].items():
+        if not is_active(entry):
+            continue
         try:
             url = repository(entry["repository"])
             repo = url.split("github.com/")[1]

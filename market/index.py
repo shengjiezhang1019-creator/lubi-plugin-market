@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .availability import is_active
 from .common import assert_binding, object_digest, read_json, repository, version_key, write_json
 
 
@@ -10,6 +11,8 @@ def build_catalog(root):
     plugins = read_json(root / "registry.json")["plugins"]
     catalog = []
     for name, registered in sorted(plugins.items()):
+        if not is_active(registered):
+            continue
         records = []
         for path in (root / "versions" / name).glob("*.json"):
             record = read_json(path)
