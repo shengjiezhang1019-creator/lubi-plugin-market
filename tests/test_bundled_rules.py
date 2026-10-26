@@ -80,13 +80,14 @@ def test_workflow_does_not_checkout_external_host():
     assert "host_repository" not in read_json(ROOT / "config/market.json")
 
 
-def test_market_requires_component_types_but_host_preserves_legacy_plugins():
+def test_market_and_host_do_not_require_component_type_declarations():
     host = Path("C:/AGI/src/plugin_system/core/loading/manifest_schema.json")
     if not host.is_file():
         pytest.skip("可选的一致性检查：当前机器没有露比主程序源码")
     market_schema = read_json(ROOT / "market/rules/manifest_schema.json")
     host_schema = read_json(host)
-    assert "comp_types" in market_schema["required"]
+    assert "comp_types" not in market_schema["required"]
+    assert "comp_types" not in market_schema["properties"]
+    assert "comp_types" not in host_schema["properties"]
     assert "comp_types" not in host_schema["required"]
-    market_schema["required"].remove("comp_types")
     assert market_schema == host_schema

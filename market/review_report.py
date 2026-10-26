@@ -50,6 +50,9 @@ def render_review(validation, ai, request):
              "### 审核概况", "", "| 项目 | 结果 |", "| --- | --- |",
              f"| 插件 | {text(request['plugin_name'])} |", f"| 版本 | {text(request['tag'])} |",
              f"| 源码提交 | {text(validation['commit'])} |",
+             "| 静态组件分类 | " + text(
+                 ", ".join(validation.get("component_analysis", {}).get("types", [])) or "未发现 / 未确定"
+             ) + "（仅源码识别，运行时注册仍需验证） |",
              f"| 静态与依赖声明检查 | {'通过（含警告）' if warnings else '通过'} |",
              f"| AI 审核 | {'已完成' if ai.get('status') == 'completed' else '未完成'} |",
              f"| AI 声明已读 | {len(ai.get('files_read', []))} 个文件 |",
