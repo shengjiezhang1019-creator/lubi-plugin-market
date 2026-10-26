@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from .availability import is_active
-from .common import assert_binding, object_digest, read_json, repository, version_key, write_json
+from .common import assert_binding, now, object_digest, read_json, repository, version_key, write_json
+from .relisting import review_context
 
 
 def build_catalog(root):
@@ -35,7 +36,7 @@ def build_catalog(root):
     return catalog
 
 
-def approve(root, validation, ai, actor, issue_number):
+def approve(root, validation, ai, actor, issue_number, *, allow_relisting=False):
     root = Path(root)
     if validation.get("status") != "validated" or validation.get("dependency_status") != "runtime":
         raise ValueError("未完成正式静态与依赖声明检查，不能收录")
@@ -46,7 +47,14 @@ def approve(root, validation, ai, actor, issue_number):
     if ai.get("status") != "completed" or ai.get("commit") != validation["commit"] or ai.get("validation_fingerprint") != fingerprint:
         raise ValueError("缺少绑定当前内容的完整 AI 报告")
     request = validation["request"]
-    assert_binding(root, request)
+    registered = assert_binding(root, request, allow_withdrawn=allow_relisting)
+    withdrawn = registered is not None and not is_active(registered)
+    if withdrawn:
+        context = review_context(root, request)
+        if validation.get("relisting") != context:
+            raise ValueError("下架状态或原因已变化，请 /recheck 后重新审阅重新上架申请")
+    elif validation.get("relisting") and review_context(root, request) != validation["relisting"]:
+        raise ValueError("市场状态已变化，请 /recheck 后重新审阅")
     path = root / "versions" / request["plugin_name"] / (validation["manifest"]["version"] + ".json")
     if path.exists():
         old = read_json(path)
@@ -58,6 +66,13 @@ def approve(root, validation, ai, actor, issue_number):
     write_json(path, record)
     registry = read_json(root / "registry.json")
     registry["plugins"].setdefault(request["plugin_name"], {"repository": request["repository"], "issue_number": int(issue_number)})
+    if withdrawn:
+        entry = registry["plugins"][request["plugin_name"]]
+        operation = {"action": "relist", "actor": actor, "reason": "维护者批准修复版重新上架",
+                     "at": now(), "version": validation["manifest"]["version"], "issue_number": int(issue_number)}
+        entry["status"] = "active"
+        entry["moderation"] = operation
+        entry.setdefault("moderation_history", []).append(operation)
     write_json(root / "registry.json", registry)
     build_catalog(root)
     return True

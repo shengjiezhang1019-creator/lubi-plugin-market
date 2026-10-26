@@ -94,7 +94,7 @@ def publish(args):
         raise ValueError("检查或 AI 审核未完成")
     command = event.get("comment", {}).get("body", "").strip()
     actor = event.get("comment", {}).get("user", {}).get("login", "")
-    if command == "/approve":
+    if command in {"/approve", "/approve-relist"}:
         if not api.permission(slug, actor):
             raise ValueError("只有市场仓库 write/admin 维护者可以批准")
         marker = trusted_marker(api, slug, number)
@@ -107,7 +107,8 @@ def publish(args):
         assert_prompt_unchanged(ai, args.root)
         assert_prompt_unchanged(approved_ai, args.root)
         assert_release_unchanged(api, validation)
-        changed = approve(args.root, validation, approved_ai, actor, number)
+        changed = approve(args.root, validation, approved_ai, actor, number,
+                          allow_relisting=command == "/approve-relist")
         if changed:
             subprocess.run(["git", "add", "registry.json", "catalog.json", "versions"], cwd=args.root, check=True)
             subprocess.run(["git", "commit", "-m", f"Approve {request['plugin_name']} {request['tag']}"], cwd=args.root, check=True)
@@ -119,6 +120,13 @@ def publish(args):
         api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
     else:
         report = render_review(validation, ai, request)
+        if validation.get("relisting"):
+            from .review_report import text
+            withdrawal = validation["relisting"]["withdrawal"]
+            report = ("## 下架插件重新上架申请\n\n旧版本继续下架，尚未恢复。\n\n"
+                      + "**下架原因：** " + text(withdrawal.get("reason", "历史记录未填写"))
+                      + "\n\n维护者确认修复版可重新上架后，单独评论 `/approve-relist`；普通 `/approve` 不会恢复下架插件。\n\n"
+                      + report)
         # 原始完整 AI JSON 存放在机器人评论的独立机器可读标记；不作为 shell 或批准指令。
         import base64
         payload = base64.b64encode(json.dumps(ai, ensure_ascii=False, sort_keys=True).encode()).decode()
@@ -158,7 +166,7 @@ def gate(args):
             stream.write("mode=ignored\n")
         return
     command = event.get("comment", {}).get("body", "").strip()
-    mode = "approve" if command == "/approve" else "reject" if command.startswith("/reject ") else "review"
+    mode = "approve" if command in {"/approve", "/approve-relist"} else "reject" if command.startswith("/reject ") else "review"
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
         stream.write("eligible=true\nmode=" + mode + "\n")
     set_status(api, slug, number, "检查中")

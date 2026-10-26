@@ -3,9 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from .archive import download, unpack
-from .common import COMMIT, assert_binding, object_digest, validate_request, write_json
+from .common import COMMIT, object_digest, validate_request, write_json
 from .dependencies import declaration_report
 from .github import GitHub
+from .relisting import review_context
 from .rules.component_types import analyze_component_types
 from .validation import framework_check, manifest_check, rules_fingerprint
 
@@ -13,7 +14,7 @@ from .validation import framework_check, manifest_check, rules_fingerprint
 def validate(root, request, work, *, static_only=False, archive_data=None, commit=None, release=None):
     root, work = Path(root), Path(work)
     request = validate_request(request)
-    assert_binding(root, request)
+    relisting = review_context(root, request)
     if archive_data is None:
         release, commit = GitHub().release(request["repository"], request["tag"])
         archive_data = download(request["repository"], commit)
@@ -33,6 +34,8 @@ def validate(root, request, work, *, static_only=False, archive_data=None, commi
               "dependency_policy": dependencies, "release_notes": (release or {}).get("body", ""),
               "published_at": (release or {}).get("published_at", ""),
               "source_dir": str(source.relative_to(work).as_posix())}
+    if relisting is not None:
+        report["relisting"] = relisting
     report["fingerprint"] = object_digest(report)
     write_json(work / "validation.json", report)
     return report, source

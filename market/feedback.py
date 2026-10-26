@@ -29,7 +29,7 @@ def authorized_issue(api, slug, event):
     actor = event["comment"].get("user", {}).get("login", "")
     if command == "/recheck" and actor == issue.get("user", {}).get("login"):
         return issue, True
-    if command in {"/recheck", "/approve"} or command.startswith("/reject "):
+    if command in {"/recheck", "/approve", "/approve-relist"} or command.startswith("/reject "):
         return issue, api.permission(slug, actor)
     return issue, False
 
@@ -87,6 +87,8 @@ def failure_detail(stage, exc):
             return "GitHub 仓库地址格式不正确。", "请填写公开仓库根地址，例如 https://github.com/作者/仓库；编辑原申请后重新检查。"
         return "缺少可复核的审核结果，或申请内容需要重新检查。", "请先评论 `/recheck` 生成完整报告，再由维护者审阅并批准。"
     if stage == "validate" and isinstance(exc, ValueError):
+        if message.startswith("重新上架必须提交"):
+            return "下架插件需要提交高于历史记录的新版本。", "请发布新的正式版本并更新原申请的 Release 标签；不要覆盖或移动历史版本。"
         for name in ("README.md", "plugin.py", "_manifest.json"):
             if message == "缺少必需文件 " + name:
                 return f"发布源码的根目录缺少 {name}。", "请补齐文件并发布新的正式版本，然后编辑本申请的 Release 标签重新检查。"
@@ -109,6 +111,8 @@ def failure_detail(stage, exc):
             return "AI 返回的报告未满足完整性校验，尚未完成审核。", retry
         return "AI 审核服务暂时不可用或配置异常，尚未完成审核。", retry
     if stage == "publish":
+        if isinstance(exc, ValueError) and message.startswith("插件已下架"):
+            return "这是下架插件的修复版，普通批准不会恢复市场展示。", "请维护者审阅重新上架报告及下架原因，确认后单独评论 `/approve-relist`。"
         if isinstance(exc, ValueError):
             return "批准内容与当前申请、源码或已发布的审核报告不一致，或审核尚未完成。", "请先评论 `/recheck`，重新检查和审阅后再由维护者批准。"
         return "审核报告或市场索引发布失败，尚未确认上架成功。", "请由维护者查看发布日志。若已批准，请确认索引状态后重试 `/approve`；勿修改或重复发布同一版本。"
