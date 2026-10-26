@@ -69,7 +69,10 @@ def test_approval_rechecks_previous_report_against_all_files(tmp_path, monkeypat
     for name in ("plugin.py", "_manifest.json", "README.md"):
         (source / name).write_text("text", encoding="utf-8")
     write_json(work / "validation.json", {"source_dir": "source", "commit": "a" * 40})
-    write_json(work / "previous-ai.json", report())
+    from market.common import object_digest
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "prompts/plugin-review.md").write_text("current prompt", encoding="utf-8")
+    write_json(work / "previous-ai.json", {**report(), "prompt_sha256": object_digest("current prompt")})
     monkeypatch.setattr(sys, "argv", ["market", "ai", "--root", str(tmp_path), "--work", str(work)])
     with pytest.raises(ValueError, match="AI 审核未完成"):
         cli.main()

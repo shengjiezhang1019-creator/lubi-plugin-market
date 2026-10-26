@@ -16,12 +16,18 @@ from .ai_review import review, source_bundle, validate_response
 from .availability import is_active
 from .common import object_digest, read_json, repository, validate_request, write_json
 from .github import GitHub
-from .feedback import authorized_issue, failure, record_failure, set_status
+from .feedback import authorized_issue, failure, record_failure, safe_set_status as set_status
 from .index import approve, build_catalog
 from .pipeline import validate
 from .review_report import render_review
 
 MARKER = "<!-- lubi-market-validation:"
+
+
+def assert_prompt_unchanged(report, root):
+    current = object_digest((root / "prompts/plugin-review.md").read_text(encoding="utf-8"))
+    if report.get("prompt_sha256") != current:
+        raise ValueError("AI 审核提示词已变化或旧报告缺少绑定，请先 /recheck 后重新审阅")
 
 
 def issue_request(body):
@@ -98,6 +104,8 @@ def publish(args):
         approved_ai = read_json(args.work / "previous-ai.json")
         if object_digest(approved_ai) != marker["ai_sha256"]:
             raise ValueError("AI 报告不等于维护者已查看的报告")
+        assert_prompt_unchanged(ai, args.root)
+        assert_prompt_unchanged(approved_ai, args.root)
         assert_release_unchanged(api, validation)
         changed = approve(args.root, validation, approved_ai, actor, number)
         if changed:
@@ -213,14 +221,21 @@ def reject(args):
     issue, req = snapshot_issue(api, slug, number)
     path = args.root / "versions" / req["plugin_name"] / (req["tag"][1:] + ".json")
     if path.exists():
-        raise ValueError("该版本已有记录，不能用拒绝命令覆盖")
-    write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": command[8:].strip(), "issue_number": int(number)})
-    subprocess.run(["git", "add", "versions"], cwd=args.root, check=True)
-    subprocess.run(["git", "commit", "-m", f"Reject {req['plugin_name']} {req['tag']}"], cwd=args.root, check=True)
-    subprocess.run(["git", "push"], cwd=args.root, check=True)
+        existing = read_json(path)
+        if (existing.get("status") != "rejected" or existing.get("request") != req
+                or existing.get("issue_number") != int(number)):
+            raise ValueError("该版本已有其他审核记录，不能用拒绝命令覆盖")
+        reason = existing["reason"]
+    else:
+        reason = command[8:].strip()
+        write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": reason,
+                          "issue_number": int(number)})
+        subprocess.run(["git", "add", "versions"], cwd=args.root, check=True)
+        subprocess.run(["git", "commit", "-m", f"Reject {req['plugin_name']} {req['tag']}"], cwd=args.root, check=True)
+        subprocess.run(["git", "push"], cwd=args.root, check=True)
     write_json(args.work / "publication.json", {"stage": "reject", "status": "已拒绝", "request": req})
     set_status(api, slug, number, "已拒绝")
-    api.comment(slug, number, "已拒绝本版本：" + command[8:].strip())
+    api.comment(slug, number, "已拒绝本版本：" + reason)
     api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
 
 
@@ -255,6 +270,7 @@ def run_action(args):
             files = source_bundle(args.work / validation["source_dir"])
             previous = validate_response(read_json(args.work / "previous-ai.json"), validation["commit"],
                                          {file["path"] for file in files})
+            assert_prompt_unchanged(previous, args.root)
             write_json(args.work / "ai-review.json", previous)
         else:
             result = review(args.work / validation["source_dir"], validation, args.root / "prompts/plugin-review.md")

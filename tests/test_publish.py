@@ -9,13 +9,16 @@ from market.common import object_digest, read_json, write_json
 
 def prepare(tmp_path, monkeypatch):
     root = tmp_path / "market"
+    (root / "prompts").mkdir(parents=True)
+    (root / "prompts/plugin-review.md").write_text("current prompt", encoding="utf-8")
     work = tmp_path / "work"
     request = {"plugin_name": "demo_plugin", "repository": "https://github.com/a/b", "tag": "v1.0.0"}
     validation = {"status": "validated", "dependency_status": "runtime", "request": request,
                   "commit": "a" * 40, "sha256": "b" * 64, "manifest": {"name": "demo_plugin", "version": "1.0.0"},
                   "dependency_lock": {}, "release_notes": "", "published_at": ""}
     validation["fingerprint"] = object_digest(validation)
-    ai = {"status": "completed", "commit": validation["commit"], "validation_fingerprint": validation["fingerprint"]}
+    ai = {"status": "completed", "commit": validation["commit"], "validation_fingerprint": validation["fingerprint"],
+          "prompt_sha256": object_digest("current prompt")}
     write_json(work / "validation.json", validation)
     write_json(work / "ai-review.json", ai)
     write_json(work / "previous-ai.json", ai)

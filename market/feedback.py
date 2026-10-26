@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from urllib.parse import quote
 
 from .common import read_json, write_json
@@ -58,6 +59,16 @@ def set_status(api, slug, number, status):
         except GitHubAPIError as exc:
             if exc.status != 404:
                 raise
+
+
+def safe_set_status(api, slug, number, status):
+    """标签属于辅助展示，失败不能阻止结果评论或补完已发布的申请。"""
+    try:
+        set_status(api, slug, number, status)
+        return True
+    except Exception:
+        print("申请标签更新失败，继续发送结果反馈；请维护者检查标签接口。", file=sys.stderr)
+        return False
 
 
 def failure_detail(stage, exc):
@@ -142,7 +153,7 @@ def failure(args, api):
     run_id = str(int(os.environ["GITHUB_RUN_ID"]))
     attempt = str(int(os.environ.get("GITHUB_RUN_ATTEMPT", "1")))
     marker = f"<!-- lubi-market-failure:{run_id}:{attempt} -->"
-    set_status(api, slug, number, status)
+    safe_set_status(api, slug, number, status)
     # 同一轮失败任务重试不重复通知；真正的新一轮检查仍会新增评论。
     if any(marker in comment.get("body", "") and comment.get("user", {}).get("login") == "github-actions[bot]"
            and comment.get("user", {}).get("type") == "Bot"
