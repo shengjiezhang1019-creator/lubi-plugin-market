@@ -16,11 +16,18 @@ from .ai_review import review, source_bundle, validate_response
 from .availability import is_active
 from .common import object_digest, read_json, repository, validate_request, write_json
 from .github import GitHub
+from .feedback import authorized_issue, failure, record_failure, safe_set_status as set_status
 from .index import approve, build_catalog
 from .pipeline import validate
 from .review_report import render_review
 
 MARKER = "<!-- lubi-market-validation:"
+
+
+def assert_prompt_unchanged(report, root):
+    current = object_digest((root / "prompts/plugin-review.md").read_text(encoding="utf-8"))
+    if report.get("prompt_sha256") != current:
+        raise ValueError("AI 审核提示词已变化或旧报告缺少绑定，请先 /recheck 后重新审阅")
 
 
 def issue_request(body):
@@ -97,6 +104,8 @@ def publish(args):
         approved_ai = read_json(args.work / "previous-ai.json")
         if object_digest(approved_ai) != marker["ai_sha256"]:
             raise ValueError("AI 报告不等于维护者已查看的报告")
+        assert_prompt_unchanged(ai, args.root)
+        assert_prompt_unchanged(approved_ai, args.root)
         assert_release_unchanged(api, validation)
         changed = approve(args.root, validation, approved_ai, actor, number)
         if changed:
@@ -104,7 +113,9 @@ def publish(args):
             subprocess.run(["git", "commit", "-m", f"Approve {request['plugin_name']} {request['tag']}"], cwd=args.root, check=True)
             # push 失败不得报告成功或关闭申请；concurrency + 无强推防止覆盖并发变更。
             subprocess.run(["git", "push"], cwd=args.root, check=True)
-        api.comment(slug, number, f"已收录 {request['plugin_name']} {request['tag']}，commit `{validation['commit']}`。")
+        write_json(args.work / "publication.json", {"stage": "publish", "status": "已上架", "request": request})
+        set_status(api, slug, number, "已上架")
+        api.comment(slug, number, f"✅ 已上架：已收录 {request['plugin_name']} {request['tag']}，commit `{validation['commit']}`。")
         api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
     else:
         report = render_review(validation, ai, request)
@@ -112,7 +123,8 @@ def publish(args):
         import base64
         payload = base64.b64encode(json.dumps(ai, ensure_ascii=False, sort_keys=True).encode()).decode()
         report += "\n<!-- lubi-ai-base64:" + payload + " -->\n" + review_marker(validation, ai, request)
-        api.comment(slug, number, report)
+        api.comment(slug, number, "🔵 检查和 AI 报告已完成，等待维护者人工审核；尚未上架。\n\n" + report)
+        set_status(api, slug, number, "待人工审核")
 
 
 def previous_ai(api, slug, number, work):
@@ -138,25 +150,23 @@ def gate(args):
     slug = os.environ["GITHUB_REPOSITORY"]
     api = GitHub()
     number = event["issue"]["number"]
-    issue, request = snapshot_issue(api, slug, number)
-    command = event.get("comment", {}).get("body", "").strip()
-    actor = event.get("comment", {}).get("user", {}).get("login", "")
-    allowed = True
-    if "comment" in event:
-        if command == "/approve" or command.startswith("/reject "):
-            allowed = api.permission(slug, actor)
-        elif command == "/recheck":
-            allowed = actor == issue["user"]["login"] or api.permission(slug, actor)
-        else:
-            allowed = False
+    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+        stream.write("eligible=false\n")
+    issue, allowed = authorized_issue(api, slug, event)
     if not allowed:
-        raise ValueError("命令不受支持或无权限")
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+            stream.write("mode=ignored\n")
+        return
+    command = event.get("comment", {}).get("body", "").strip()
+    mode = "approve" if command == "/approve" else "reject" if command.startswith("/reject ") else "review"
+    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+        stream.write("eligible=true\nmode=" + mode + "\n")
+    set_status(api, slug, number, "检查中")
+    request = issue_request(issue.get("body", ""))
     args.work.mkdir(parents=True, exist_ok=True)
     write_json(args.work / "request.json", request)
-    if command == "/approve":
+    if mode == "approve":
         previous_ai(api, slug, number, args.work)
-    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
-        stream.write("mode=" + ("approve" if command == "/approve" else "reject" if command.startswith("/reject ") else "review") + "\n")
 
 
 def discover(args):
@@ -211,12 +221,21 @@ def reject(args):
     issue, req = snapshot_issue(api, slug, number)
     path = args.root / "versions" / req["plugin_name"] / (req["tag"][1:] + ".json")
     if path.exists():
-        raise ValueError("该版本已有记录，不能用拒绝命令覆盖")
-    write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": command[8:].strip()})
-    subprocess.run(["git", "add", "versions"], cwd=args.root, check=True)
-    subprocess.run(["git", "commit", "-m", f"Reject {req['plugin_name']} {req['tag']}"], cwd=args.root, check=True)
-    subprocess.run(["git", "push"], cwd=args.root, check=True)
-    api.comment(slug, number, "已拒绝本版本：" + command[8:].strip())
+        existing = read_json(path)
+        if (existing.get("status") != "rejected" or existing.get("request") != req
+                or existing.get("issue_number") != int(number)):
+            raise ValueError("该版本已有其他审核记录，不能用拒绝命令覆盖")
+        reason = existing["reason"]
+    else:
+        reason = command[8:].strip()
+        write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": reason,
+                          "issue_number": int(number)})
+        subprocess.run(["git", "add", "versions"], cwd=args.root, check=True)
+        subprocess.run(["git", "commit", "-m", f"Reject {req['plugin_name']} {req['tag']}"], cwd=args.root, check=True)
+        subprocess.run(["git", "push"], cwd=args.root, check=True)
+    write_json(args.work / "publication.json", {"stage": "reject", "status": "已拒绝", "request": req})
+    set_status(api, slug, number, "已拒绝")
+    api.comment(slug, number, "已拒绝本版本：" + reason)
     api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
 
 
@@ -231,6 +250,15 @@ def main():
     args.root = args.root.resolve()
     args.work = args.work.resolve()
     args.work.mkdir(parents=True, exist_ok=True)
+    try:
+        run_action(args)
+    except Exception as exc:
+        if args.action in {"gate", "validate", "ai", "publish", "reject"}:
+            record_failure(args.work, args.action, exc)
+        raise
+
+
+def run_action(args):
     if args.action == "gate":
         gate(args)
     elif args.action == "validate":
@@ -242,10 +270,13 @@ def main():
             files = source_bundle(args.work / validation["source_dir"])
             previous = validate_response(read_json(args.work / "previous-ai.json"), validation["commit"],
                                          {file["path"] for file in files})
+            assert_prompt_unchanged(previous, args.root)
             write_json(args.work / "ai-review.json", previous)
         else:
             result = review(args.work / validation["source_dir"], validation, args.root / "prompts/plugin-review.md")
             write_json(args.work / "ai-review.json", result)
+        if read_json(args.work / "ai-review.json").get("status") != "completed":
+            raise ValueError("AI 审核未完成，未覆盖全部送审文件")
     elif args.action == "publish":
         publish(args)
     elif args.action == "discover":
@@ -255,12 +286,7 @@ def main():
     elif args.action == "reject":
         reject(args)
     elif args.action == "failure":
-        event = read_json(os.environ["GITHUB_EVENT_PATH"])
-        slug = os.environ["GITHUB_REPOSITORY"]
-        run_id = os.environ["GITHUB_RUN_ID"]
-        GitHub().comment(slug, event["issue"]["number"],
-            "本次市场任务未完成，未确认上架成功。请查看工作流日志并修正配置或申请后重试：\n\n"
-            + f"https://github.com/{slug}/actions/runs/{run_id}")
+        failure(args, GitHub())
     elif args.action == "demo":
         # 临时元数据保持正式 registry/catalog 不变；规则直接使用本仓库版本。
         with tempfile.TemporaryDirectory(prefix="demo-meta-", dir=args.work) as temporary:

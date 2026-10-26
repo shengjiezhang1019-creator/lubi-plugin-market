@@ -13,6 +13,7 @@ from .rules.component_types import analyze_component_types
 from .rules.static_checks import CheckResult, Status
 
 RULES_DIR = Path(__file__).resolve().parent / "rules"
+REVIEW_PROMPT = Path(__file__).resolve().parents[1] / "prompts/plugin-review.md"
 
 
 def rules_fingerprint():
@@ -23,6 +24,7 @@ def rules_fingerprint():
         RULES_DIR / "static_checks.py",
         RULES_DIR / "component_types.py",
         Path(__file__).resolve(),
+        REVIEW_PROMPT,
     ]
     return object_digest({path.name: digest(path.read_bytes()) for path in files})
 

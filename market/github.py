@@ -10,6 +10,12 @@ import urllib.request
 from .common import repository
 
 
+class GitHubAPIError(RuntimeError):
+    def __init__(self, status, method, path):
+        self.status = status
+        super().__init__(f"GitHub API HTTP {status}: {method} {path}")
+
+
 class GitHub:
     def __init__(self, token=None):
         self.token = token if token is not None else os.environ.get("GITHUB_TOKEN", "")
@@ -33,7 +39,7 @@ class GitHub:
                 return json.loads(raw) if raw else None
         except urllib.error.HTTPError as exc:
             # 不输出请求 headers、token 或服务端任意错误正文。
-            raise RuntimeError(f"GitHub API HTTP {exc.code}: {method} {path}") from None
+            raise GitHubAPIError(exc.code, method, path) from None
 
     def pages(self, path):
         page = 1
