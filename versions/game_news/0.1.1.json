@@ -1,0 +1,11 @@
+{
+  "actor": "shengjiezhang1019-creator",
+  "issue_number": 8,
+  "reason": "维护者未批准本版本",
+  "request": {
+    "plugin_name": "game_news",
+    "repository": "https://github.com/zhangshengjie-xsw/lubi-game-news",
+    "tag": "v0.1.1"
+  },
+  "status": "rejected"
+}
