@@ -1,10 +1,9 @@
 """下架与恢复的离线回归，不调用真实 GitHub、不操作真实索引。"""
-from types import SimpleNamespace
 
 import pytest
 import yaml
 
-from market import cli, moderation
+from market import moderation
 from market.availability import is_active
 from market.common import assert_binding, object_digest, read_json, write_json
 from market.index import approve, build_catalog
@@ -91,19 +90,6 @@ def test_withdrawn_blocks_manual_approval_and_keeps_name_binding(market):
     with pytest.raises(ValueError, match="已下架"):
         approve(market, validation, ai, "maintainer", 3)
     assert not (market / "versions/demo/2.0.0.json").exists()
-
-
-def test_discovery_skips_withdrawn_repository(market, monkeypatch):
-    moderation.set_availability(market, "demo", "withdraw", "maintainer", "reason")
-    monkeypatch.setenv("GITHUB_REPOSITORY", "a/market")
-    called = []
-    def pages(self, path):
-        called.append(path)
-        assert "/repos/a/demo/releases" not in path
-        return []
-    monkeypatch.setattr(cli.GitHub, "pages", pages)
-    cli.discover(SimpleNamespace(root=market, work=market / "work"))
-    assert "/repos/a/peer/releases" in called
 
 
 def environment(market, monkeypatch):

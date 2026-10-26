@@ -13,8 +13,7 @@ import zipfile
 from pathlib import Path
 
 from .ai_review import review, source_bundle, validate_response
-from .availability import is_active
-from .common import object_digest, read_json, repository, validate_request, write_json
+from .common import object_digest, read_json, validate_request, write_json
 from .github import GitHub
 from .feedback import authorized_issue, failure, record_failure, safe_set_status as set_status
 from .index import approve, build_catalog
@@ -182,46 +181,6 @@ def gate(args):
         previous_ai(api, slug, number, args.work)
 
 
-def discover(args):
-    api = GitHub()
-    slug = os.environ["GITHUB_REPOSITORY"]
-    existing = set()
-    for issue in api.pages(f"/repos/{slug}/issues?state=all"):
-        if issue.get("pull_request"):
-            continue
-        try:
-            item = issue_request(issue.get("body", ""))
-        except ValueError:
-            continue
-        existing.add((item["plugin_name"], item["repository"], item["tag"]))
-    errors = []
-    for name, entry in read_json(args.root / "registry.json")["plugins"].items():
-        if not is_active(entry):
-            continue
-        try:
-            url = repository(entry["repository"])
-            repo = url.split("github.com/")[1]
-            releases = list(GitHub(token="").pages(f"/repos/{repo}/releases"))
-            for release in releases:
-                if release["draft"] or release["prerelease"]:
-                    continue
-                try:
-                    req = validate_request({"plugin_name": name, "repository": url, "tag": release["tag_name"]})
-                except ValueError:
-                    continue
-                key = (name, url, req["tag"])
-                if key in existing or (args.root / "versions" / name / (req["tag"][1:] + ".json")).exists():
-                    continue
-                body = f"### 插件名称\n\n{name}\n\n### GitHub 仓库\n\n{url}\n\n### Release 标签\n\n{req['tag']}\n\n市场自动发现的新版本，等待检查与人工批准。"
-                api.request(f"/repos/{slug}/issues", "POST", {"title": f"[Release] {name} {req['tag']}", "body": body})
-                existing.add(key)
-        except Exception as exc:
-            errors.append({"plugin": name, "error": str(exc)})
-    write_json(args.work / "discovery.json", {"errors": errors})
-    if errors:
-        raise ValueError("部分仓库扫描失败，旧索引保持不变，见 discovery.json")
-
-
 def reject(args):
     api = GitHub()
     event = read_json(os.environ["GITHUB_EVENT_PATH"])
@@ -252,7 +211,7 @@ def reject(args):
 
 def main():
     parser = argparse.ArgumentParser(description="露比插件市场工具")
-    parser.add_argument("action", choices=["gate", "validate", "ai", "publish", "discover", "catalog", "reject", "demo", "failure"])
+    parser.add_argument("action", choices=["gate", "validate", "ai", "publish", "catalog", "reject", "demo", "failure"])
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--work", type=Path, default=Path(".work/current"))
     parser.add_argument("--request", type=Path)
@@ -293,8 +252,6 @@ def run_action(args):
             raise ValueError("AI 审核未完成，未覆盖全部送审文件")
     elif args.action == "publish":
         publish(args)
-    elif args.action == "discover":
-        discover(args)
     elif args.action == "catalog":
         build_catalog(args.root)
     elif args.action == "reject":
