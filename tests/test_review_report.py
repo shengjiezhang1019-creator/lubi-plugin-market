@@ -65,6 +65,7 @@ def test_publish_keeps_original_json_and_machine_binding(tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_REPOSITORY", "a/market")
     monkeypatch.setattr(cli, "snapshot_issue", lambda *args: ({"state": "open"}, request))
     posted = []
+    monkeypatch.setattr(cli, "set_status", lambda *args: None)
     monkeypatch.setattr(GitHub, "request", lambda self, path, method, data: posted.append(data["body"]))
     cli.publish(SimpleNamespace(work=work, root=tmp_path))
     body = posted[0]

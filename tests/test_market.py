@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import io
-import json
 import zipfile
 from pathlib import Path
 
@@ -225,7 +224,7 @@ def test_workflows_are_valid_yaml():
     for file in (root / ".github/workflows").glob("*.yml"):
         result = yaml.load(file.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
         assert "on" in result and "jobs" in result
-    market = yaml.load((root / ".github/workflows/market.yml").read_text(), Loader=yaml.BaseLoader)
+    market = yaml.load((root / ".github/workflows/market.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
     assert market["jobs"]["ai"]["permissions"]["contents"] == "read"
     assert market["jobs"]["publish"]["concurrency"]["group"] == "market-index-write"
 

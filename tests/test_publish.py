@@ -67,9 +67,10 @@ def test_publish_commits_then_reports_success(tmp_path, monkeypatch):
     args, _ = prepare(tmp_path, monkeypatch)
     monkeypatch.setattr(cli.GitHub, "permission", lambda *a: True)
     output = []
+    monkeypatch.setattr(cli, "set_status", lambda *a: output.append("status:" + a[-1]))
     monkeypatch.setattr(cli.subprocess, "run", lambda command, **kwargs: output.append(command[1]))
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: output.append("comment"))
     monkeypatch.setattr(cli.GitHub, "request", lambda *a: output.append("close"))
     cli.publish(args)
-    assert output == ["add", "commit", "push", "comment", "close"]
+    assert output == ["add", "commit", "push", "status:已上架", "comment", "close"]
     assert read_json(args.root / "catalog.json")[0]["id"] == "demo_plugin"

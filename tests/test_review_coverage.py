@@ -71,7 +71,8 @@ def test_approval_rechecks_previous_report_against_all_files(tmp_path, monkeypat
     write_json(work / "validation.json", {"source_dir": "source", "commit": "a" * 40})
     write_json(work / "previous-ai.json", report())
     monkeypatch.setattr(sys, "argv", ["market", "ai", "--root", str(tmp_path), "--work", str(work)])
-    cli.main()
+    with pytest.raises(ValueError, match="AI 审核未完成"):
+        cli.main()
     result = json.loads((work / "ai-review.json").read_text(encoding="utf-8"))
     assert result["status"] == "incomplete"
     assert "README.md" in result["limitations"]

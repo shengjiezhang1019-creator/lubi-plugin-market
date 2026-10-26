@@ -16,15 +16,16 @@ jobs:
   gate:
     if: >-
       github.event.issue.state == 'open' && !github.event.issue.pull_request &&
-      (github.event_name == 'issues' && contains(github.event.issue.body, '### 插件名称') ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '### 插件名称') || startsWith(github.event.issue.title, '[Plugin]') || startsWith(github.event.issue.title, '[Release]')) ||
       github.event_name == 'issue_comment' &&
       (github.event.comment.body == '/recheck' || github.event.comment.body == '/approve' || startsWith(github.event.comment.body, '/reject ')))
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      issues: read
+      issues: write
     outputs:
       mode: ${{ steps.gate.outputs.mode }}
+      eligible: ${{ steps.gate.outputs.eligible }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,9 +45,20 @@ jobs:
           path: .work/review/
           retention-days: 7
 
+      - name: Save failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-gate
+          path: |
+            .work/review/failure.json
+            .work/review/publication.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   validate:
     needs: gate
-    if: needs.gate.outputs.mode != 'reject'
+    if: needs.gate.outputs.eligible == 'true' && needs.gate.outputs.mode != 'reject'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -69,6 +81,17 @@ jobs:
         with:
           name: validated
           path: .work/review/
+          retention-days: 7
+
+      - name: Save failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-validate
+          path: |
+            .work/review/failure.json
+            .work/review/publication.json
+          if-no-files-found: ignore
           retention-days: 7
 
   ai:
@@ -101,6 +124,17 @@ jobs:
           path: .work/review/
           retention-days: 7
 
+      - name: Save failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-ai
+          path: |
+            .work/review/failure.json
+            .work/review/publication.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   publish:
     needs: [gate, ai]
     runs-on: ubuntu-24.04
@@ -130,6 +164,17 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           python -m market.cli publish --work .work/review
 
+      - name: Save failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-publish
+          path: |
+            .work/review/failure.json
+            .work/review/publication.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   reject:
     needs: gate
     if: needs.gate.outputs.mode == 'reject'
@@ -153,13 +198,24 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          python -m market.cli reject
+          python -m market.cli reject --work .work/review
+
+      - name: Save failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-reject
+          path: |
+            .work/review/failure.json
+            .work/review/publication.json
+          if-no-files-found: ignore
+          retention-days: 7
 
   failure:
     needs: [gate, validate, ai, publish, reject]
     if: >-
-      always() && needs.gate.result == 'success' &&
-      (needs.validate.result == 'failure' || needs.ai.result == 'failure' ||
+      always() && (needs.gate.result == 'failure' ||
+      needs.validate.result == 'failure' || needs.ai.result == 'failure' ||
       needs.publish.result == 'failure' || needs.reject.result == 'failure')
     runs-on: ubuntu-24.04
     permissions:
@@ -174,6 +230,12 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        continue-on-error: true # 准备环境失败时可能没有报告，仍发布按阶段生成的兜底反馈。
+        with:
+          pattern: failure-*
+          path: .work/failures
       - env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python -m market.cli failure
+          MARKET_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: python -m market.cli failure --work .work/failures
