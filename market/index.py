@@ -28,7 +28,7 @@ def build_catalog(root):
         validation = record["validation"]
         catalog.append({"id": name, "repositoryUrl": registered["repository"], "commit": validation["commit"],
                         "sha256": validation["sha256"], "manifest": validation["manifest"],
-                        "tags": validation["manifest"].get("tags", []), "comp_types": validation["manifest"].get("comp_types", []),
+                        "tags": validation["manifest"].get("tags", []), "comp_types": validation.get("component_analysis", {}).get("types", []),
                         "dependency_policy": validation.get("dependency_policy", {"policy": "runtime-environment-v1"}),
                         "release_notes": validation["release_notes"], "published_at": validation["published_at"]})
     write_json(root / "catalog.json", catalog)

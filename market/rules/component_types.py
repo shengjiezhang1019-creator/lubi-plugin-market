@@ -1,11 +1,10 @@
-"""从公共组件基类及本地继承关系核对展示类型；只解析 AST，不导入源码。"""
+"""从公共组件基类及本地继承关系识别展示类型；只解析 AST，不导入源码。"""
 
 from __future__ import annotations
 
 import ast
 from pathlib import Path
 
-from .static_checks import CheckResult, Status
 
 _BASES = {
     f"{module}.{base}": kind
@@ -31,7 +30,7 @@ def _dotted(node):
     return None
 
 
-def check_component_types(source: Path, declared: list[str]) -> list[CheckResult]:
+def analyze_component_types(source: Path) -> dict:
     modules = {}
     trees = {}
     symbols = dict(_BASES)
@@ -160,33 +159,6 @@ def check_component_types(source: Path, declared: list[str]) -> list[CheckResult
                         if not (isinstance(ret.value, (ast.Tuple, ast.List)) and not ret.value.elts):
                             uncertain.add(f"{relative}:{method.lineno} 动态绑定内容未确认")
 
-    results = []
-    missing = observed - set(declared)
-    extra = set(declared) - observed
-    if missing:
-        results.append(
-            CheckResult(
-                "component_types", Status.FAIL, "源码组件类型未在 comp_types 声明：" + ", ".join(sorted(missing))
-            )
-        )
-    if extra and not uncertain:
-        results.append(
-            CheckResult(
-                "component_types", Status.FAIL, "comp_types 声明了源码中未发现的组件类型：" + ", ".join(sorted(extra))
-            )
-        )
-    if uncertain:
-        results.append(
-            CheckResult(
-                "component_types", Status.WARN, "组件类型无法完全静态确认，需人工核实：" + "；".join(sorted(uncertain))
-            )
-        )
-    if not results:
-        results.append(
-            CheckResult(
-                "component_types",
-                Status.PASS,
-                "comp_types 与静态组件基类声明一致：" + (", ".join(sorted(observed)) or "无组件"),
-            )
-        )
-    return results
+    # 这是静态分类线索，不保证这些类最终被运行时注册；动态路径交由人工复核。
+    return {"types": sorted(observed), "status": "unknown" if uncertain else "detected",
+            "warnings": sorted(uncertain)}
