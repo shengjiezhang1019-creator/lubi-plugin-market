@@ -94,7 +94,7 @@ def terminal(tmp_path, monkeypatch, status):
     return args, record
 
 
-@pytest.mark.parametrize("status,label", [("approved", "已上架"), ("rejected", "已拒绝")])
+@pytest.mark.parametrize("status,label", [("approved", "已上架"), ("rejected", "需修改后重新申请")])
 def test_original_issue_recheck_keeps_remote_terminal_state(tmp_path, monkeypatch, status, label):
     args, record = terminal(tmp_path, monkeypatch, status)
     api = RemoteApi(record)
@@ -118,7 +118,7 @@ def test_failure_fallback_preserves_existing_remote_approval(tmp_path, monkeypat
     monkeypatch.setenv("MARKET_JOB_RESULTS", '{"gate":{"result":"failure"}}')
     feedback.failure(args, api)
     assert any(data == {"labels": ["已上架"]} for _, _, data in api.calls)
-    assert "检查失败" not in api.comments[0]["body"]
+    assert "不符合提交要求" not in api.comments[0]["body"]
 
 
 def test_local_only_record_cannot_be_reported_as_published(tmp_path, monkeypatch):

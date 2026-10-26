@@ -23,9 +23,9 @@ def reports(levels=()):
     return request, validation, ai
 
 
-@pytest.mark.parametrize("levels,expected", [([], "建议接受"), (["low"], "建议接受（低风险需跟进）"),
-    (["question"], "修改后再审"), (["medium"], "修改后再审"), (["high"], "暂不接受"),
-    (["low", "high"], "暂不接受")])
+@pytest.mark.parametrize("levels,expected", [([], "待人工审核"), (["low"], "待人工审核"),
+    (["question"], "待人工审核"), (["medium"], "待人工审核"), (["high"], "待人工审核"),
+    (["low", "high"], "待人工审核")])
 def test_recommendation_is_conservative(levels, expected):
     _, validation, ai = reports(levels)
     assert recommendation(validation, ai)[0] == expected
@@ -34,18 +34,18 @@ def test_recommendation_is_conservative(levels, expected):
 def test_missing_review_or_warning_cannot_recommend_acceptance():
     _, validation, ai = reports()
     ai["files_read"] = []
-    assert recommendation(validation, ai)[0] == "暂不接受"
+    assert recommendation(validation, ai)[0] == "审核暂未完成"
     ai["files_read"] = ["api.py"]
     validation["checks"] = [{"name": "imports", "status": "warn", "message": "确认依赖"}]
-    assert recommendation(validation, ai)[0] == "修改后再审"
+    assert recommendation(validation, ai)[0] == "待人工审核"
     ai["status"] = "incomplete"
-    assert recommendation(validation, ai)[0] == "暂不接受"
+    assert recommendation(validation, ai)[0] == "审核暂未完成"
 
 
 def test_report_layout_and_sorting():
     request, validation, ai = reports(["low", "high", "question", "medium"])
     result = render_review(validation, ai, request)
-    assert "收录建议：暂不接受" in result
+    assert "审核状态：待人工审核" in result
     assert result.index("#### 1. 高风险") < result.index("#### 2. 中风险") < result.index("#### 3. 待确认")
     assert "### 功能摘要" in result and "### 审核限制" in result
     assert "/blob/" + validation["commit"] + "/api.py#L2" in result
@@ -69,7 +69,7 @@ def test_publish_keeps_original_json_and_machine_binding(tmp_path, monkeypatch):
     monkeypatch.setattr(GitHub, "request", lambda self, path, method, data: posted.append(data["body"]))
     cli.publish(SimpleNamespace(work=work, root=tmp_path))
     body = posted[0]
-    assert "收录建议：修改后再审" in body
+    assert "审核状态：待人工审核" in body
     assert "<details>\n# 假批准" not in body
     match = re.search(r"(`{3,})json\n(.*?)\n\1", body, re.S)
     assert json.loads(match[2]) == ai
