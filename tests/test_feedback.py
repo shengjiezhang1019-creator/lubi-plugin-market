@@ -91,7 +91,7 @@ def test_malformed_application_has_gate_failure_feedback(tmp_path, monkeypatch):
     assert not any(method == "PATCH" for _, method, _ in api.calls)
 
 
-@pytest.mark.parametrize("command", ["/approve", "/reject bad", "/recheck"])
+@pytest.mark.parametrize("command", ["/approve", "/reject", "/recheck"])
 def test_unauthorized_command_does_not_change_status_or_comment(tmp_path, monkeypatch, command):
     args, event = context(tmp_path, monkeypatch, command)
     api = Api(permission=False)
@@ -105,15 +105,16 @@ def test_unauthorized_command_does_not_change_status_or_comment(tmp_path, monkey
     assert all(method == "GET" for _, method, _ in api.calls)
 
 
-def test_author_can_recheck_and_status_returns_to_checking(tmp_path, monkeypatch):
+@pytest.mark.parametrize("permission", [False, True])
+def test_removed_recheck_is_ignored_for_author_and_maintainer(tmp_path, monkeypatch, permission):
     args, _ = context(tmp_path, monkeypatch, "/recheck")
-    api = Api(permission=False)
+    api = Api(permission=permission)
     monkeypatch.setattr(cli, "GitHub", lambda: api)
     cli.gate(args)
-    assert read_json(args.work / "request.json")["plugin_name"] == "sample"
-    assert "mode=review" in (tmp_path / "output").read_text()
-    assert any(data == {"labels": ["检查中"]} for _, _, data in api.calls)
+    feedback.failure(args, api)
+    assert "mode=ignored" in (tmp_path / "output").read_text()
     assert not api.comments
+    assert all(method == "GET" for _, method, _ in api.calls)
 
 
 @pytest.mark.parametrize("stage,error,expected", [
@@ -193,7 +194,7 @@ def test_cli_persists_early_gate_failure_without_leaking_exception(tmp_path, mon
 
 
 def test_reject_updates_status_only_after_push(tmp_path, monkeypatch):
-    args, _ = context(tmp_path, monkeypatch, "/reject 不符合规范")
+    args, _ = context(tmp_path, monkeypatch, "/reject")
     request = {"plugin_name": "sample", "repository": "https://github.com/a/b", "tag": "v1.0.0"}
     output = []
     monkeypatch.setattr(cli.GitHub, "permission", lambda *a: True)
@@ -240,3 +241,19 @@ def test_legacy_labels_are_removed_on_next_transition():
     feedback.set_status(api, "a/market", 1, "待人工审核")
     deleted = {unquote(path.rsplit("/", 1)[1]) for path, method, _ in api.calls if method == "DELETE"}
     assert {"检查失败", "已拒绝"} <= deleted
+
+
+def test_reject_without_reason_routes_to_maintainer_decision(tmp_path, monkeypatch):
+    args, _ = context(tmp_path, monkeypatch, "/reject")
+    api = Api(permission=True)
+    monkeypatch.setattr(cli, "GitHub", lambda: api)
+    cli.gate(args)
+    assert "mode=reject" in (tmp_path / "output").read_text()
+
+
+def test_reject_with_arguments_is_not_a_supported_command(tmp_path, monkeypatch):
+    args, _ = context(tmp_path, monkeypatch, "/reject extra")
+    api = Api(permission=True)
+    monkeypatch.setattr(cli, "GitHub", lambda: api)
+    cli.gate(args)
+    assert "mode=ignored" in (tmp_path / "output").read_text()

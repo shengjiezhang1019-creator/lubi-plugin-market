@@ -30,7 +30,7 @@ MARKER = "<!-- lubi-market-validation:"
 def assert_prompt_unchanged(report, root):
     current = object_digest((root / "prompts/plugin-review.md").read_text(encoding="utf-8"))
     if report.get("prompt_sha256") != current:
-        raise ValueError("AI 审核提示词已变化或旧报告缺少绑定，请先 /recheck 后重新审阅")
+        raise ValueError("AI 审核提示词已变化或旧报告缺少绑定，请重新提交申请并审阅新报告")
 
 
 def issue_request(body):
@@ -66,7 +66,7 @@ def trusted_marker(api, slug, number):
         if match:
             markers.append(json.loads(match[1]))
     if not markers:
-        raise ValueError("缺少机器人发布的完整检查和 AI 审核报告，先执行 /recheck")
+        raise ValueError("缺少机器人发布的完整检查和 AI 审核报告，请重新提交申请完成审核")
     return markers[-1]
 
 
@@ -165,7 +165,7 @@ def gate(args):
             stream.write("mode=ignored\n")
         return
     command = event.get("comment", {}).get("body", "").strip()
-    mode = "approve" if command == "/approve" else "reject" if command.startswith("/reject ") else "review"
+    mode = "approve" if command == "/approve" else "reject" if command == "/reject" else "review"
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
         stream.write("eligible=true\nmode=" + mode + "\n")
     request = issue_request(issue.get("body", ""))
@@ -228,8 +228,8 @@ def reject(args):
     slug = os.environ["GITHUB_REPOSITORY"]
     actor = event["comment"]["user"]["login"]
     command = event["comment"]["body"].strip()
-    if not command.startswith("/reject ") or not command[8:].strip() or not api.permission(slug, actor):
-        raise ValueError("拒绝命令缺少原因或无权限")
+    if command != "/reject" or not api.permission(slug, actor):
+        raise ValueError("拒绝命令不正确或无权限")
     number = event["issue"]["number"]
     issue, req = snapshot_issue(api, slug, number)
     path = args.root / "versions" / req["plugin_name"] / (req["tag"][1:] + ".json")
@@ -240,13 +240,13 @@ def reject(args):
             raise ValueError("该版本已有其他审核记录，不能用拒绝命令覆盖")
         reason = existing["reason"]
     else:
-        reason = command[8:].strip()
+        reason = "维护者未批准本版本"
         write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": reason,
                           "issue_number": int(number)})
     push_index(args.root, f"Reject {req['plugin_name']} {req['tag']}", ["versions"], subprocess.run)
     write_json(args.work / "publication.json", {"stage": "reject", "status": "需修改后重新申请", "request": req})
     set_status(api, slug, number, "需修改后重新申请")
-    api.comment(slug, number, "需修改后重新申请。\n\n**维护者确认的修改要求：** " + reason + "\n\n请修正后发布新版本，并创建新的申请。")
+    api.comment(slug, number, "维护者未批准本版本，状态：需修改后重新申请。\n\n请查看本申请已有的 AI 审核报告及静态检查提示；如需再次申请，请发布新版本并创建新的申请。")
     api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
 
 

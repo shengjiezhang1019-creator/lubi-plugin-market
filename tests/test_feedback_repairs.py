@@ -18,7 +18,7 @@ def test_label_failure_still_notifies_author(tmp_path, monkeypatch):
 
 
 def test_reject_retry_completes_existing_result_without_overwriting(tmp_path, monkeypatch):
-    args, _ = context(tmp_path, monkeypatch, "/reject 改了的原因")
+    args, _ = context(tmp_path, monkeypatch, "/reject")
     api = Api()
     request = cli.issue_request(api.issue["body"])
     path = args.root / "versions/sample/1.0.0.json"
@@ -37,14 +37,15 @@ def test_reject_retry_completes_existing_result_without_overwriting(tmp_path, mo
     assert read_json(path) == record
     assert commands == ["add", "diff", "push"]
     assert statuses == ["需修改后重新申请"]
-    assert "原始拒绝原因" in comments[0]
+    assert "维护者未批准本版本" in comments[0]
+    assert "AI 审核报告" in comments[0]
     assert closes == [{"state": "closed"}]
     assert read_json(args.work / "publication.json")["status"] == "需修改后重新申请"
 
 
 @pytest.mark.parametrize("change", [{"status": "approved"}, {"issue_number": 99}, {"request": {}}])
 def test_reject_retry_cannot_overwrite_other_records(tmp_path, monkeypatch, change):
-    args, _ = context(tmp_path, monkeypatch, "/reject 原因")
+    args, _ = context(tmp_path, monkeypatch, "/reject")
     request = cli.issue_request(Api().issue["body"])
     record = {"status": "rejected", "request": request, "issue_number": 1, "reason": "原原因", **change}
     path = args.root / "versions/sample/1.0.0.json"
