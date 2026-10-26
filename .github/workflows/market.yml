@@ -18,7 +18,7 @@ jobs:
       github.event.issue.state == 'open' && !github.event.issue.pull_request &&
       (github.event_name == 'issues' && (contains(github.event.issue.body, '### 插件名称') || startsWith(github.event.issue.title, '[Plugin]') || startsWith(github.event.issue.title, '[Release]')) ||
       github.event_name == 'issue_comment' &&
-      (github.event.comment.body == '/recheck' || github.event.comment.body == '/approve' || github.event.comment.body == '/approve-relist' || startsWith(github.event.comment.body, '/reject ')))
+      (github.event.comment.body == '/recheck' || github.event.comment.body == '/approve' || startsWith(github.event.comment.body, '/reject ')))
     runs-on: ubuntu-24.04
     permissions:
       contents: read

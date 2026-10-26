@@ -29,7 +29,7 @@ def authorized_issue(api, slug, event):
     actor = event["comment"].get("user", {}).get("login", "")
     if command == "/recheck" and actor == issue.get("user", {}).get("login"):
         return issue, True
-    if command in {"/recheck", "/approve", "/approve-relist"} or command.startswith("/reject "):
+    if command in {"/recheck", "/approve"} or command.startswith("/reject "):
         return issue, api.permission(slug, actor)
     return issue, False
 
@@ -112,7 +112,7 @@ def failure_detail(stage, exc):
         return "AI 审核服务暂时不可用或配置异常，尚未完成审核。", retry
     if stage == "publish":
         if isinstance(exc, ValueError) and message.startswith("插件已下架"):
-            return "这是下架插件的修复版，普通批准不会恢复市场展示。", "请维护者审阅重新上架报告及下架原因，确认后单独评论 `/approve-relist`。"
+            return "下架状态尚未绑定完整的重新上架审核报告。", "请先 `/recheck`，由维护者审阅重新上架报告及下架原因，再评论 `/approve`。"
         if isinstance(exc, ValueError):
             return "批准内容与当前申请、源码或已发布的审核报告不一致，或审核尚未完成。", "请先评论 `/recheck`，重新检查和审阅后再由维护者批准。"
         return "审核报告或市场索引发布失败，尚未确认上架成功。", "请由维护者查看发布日志。若已批准，请确认索引状态后重试 `/approve`；勿修改或重复发布同一版本。"

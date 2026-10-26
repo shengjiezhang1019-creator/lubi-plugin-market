@@ -69,9 +69,13 @@ def test_other_repository_cannot_claim_withdrawn_name(market):
         review_context(market, {**request(), "repository": "https://github.com/other/demo"})
 
 
-def test_regular_approval_cannot_restore_withdrawn_plugin(market):
+def test_approval_without_reviewed_relisting_context_cannot_restore(market):
     withdraw(market)
     validation, ai = report(market)
+    validation.pop("relisting")
+    validation.pop("fingerprint")
+    validation["fingerprint"] = object_digest(validation)
+    ai["validation_fingerprint"] = validation["fingerprint"]
     with pytest.raises(ValueError, match="已下架"):
         approve(market, validation, ai, "maintainer", 5)
     assert read_json(market / "registry.json")["plugins"]["demo"]["status"] == "withdrawn"
@@ -81,7 +85,7 @@ def test_explicit_approval_publishes_latest_and_preserves_history(market):
     withdraw(market)
     previous = version_bytes(market)
     validation, ai = report(market)
-    assert approve(market, validation, ai, "maintainer", 5, allow_relisting=True)
+    assert approve(market, validation, ai, "maintainer", 5)
     entry = read_json(market / "registry.json")["plugins"]["demo"]
     assert entry["status"] == "active"
     assert entry["moderation_history"][0]["action"] == "withdraw"
@@ -90,7 +94,7 @@ def test_explicit_approval_publishes_latest_and_preserves_history(market):
     assert next(item for item in build_catalog(market) if item["id"] == "demo")["manifest"]["version"] == "2.0.0"
     assert all(version_bytes(market)[path] == data for path, data in previous.items())
     assert review_context(market, request()) == validation["relisting"]
-    assert approve(market, validation, ai, "maintainer", 5, allow_relisting=True) is False
+    assert approve(market, validation, ai, "maintainer", 5) is False
 
 
 def test_changed_withdrawal_requires_recheck_before_restoring(market):
@@ -100,7 +104,7 @@ def test_changed_withdrawal_requires_recheck_before_restoring(market):
     registry["plugins"]["demo"]["moderation"]["reason"] = "发现了新问题"
     write_json(market / "registry.json", registry)
     with pytest.raises(ValueError, match="状态或原因已变化"):
-        approve(market, validation, ai, "maintainer", 5, allow_relisting=True)
+        approve(market, validation, ai, "maintainer", 5)
     assert not (market / "versions/demo/2.0.0.json").exists()
 
 
@@ -111,26 +115,26 @@ def test_unbound_report_cannot_restore_plugin(market):
     validation.pop("fingerprint")
     validation["fingerprint"] = object_digest(validation)
     ai = {"status": "completed", "commit": validation["commit"], "validation_fingerprint": validation["fingerprint"]}
-    with pytest.raises(ValueError, match="重新上架申请"):
-        approve(market, validation, ai, "maintainer", 5, allow_relisting=True)
+    with pytest.raises(ValueError, match="已下架"):
+        approve(market, validation, ai, "maintainer", 5)
 
 
 def test_unprivileged_relist_command_is_ignored(tmp_path, monkeypatch):
-    args, _ = context(tmp_path, monkeypatch, "/approve-relist")
+    args, _ = context(tmp_path, monkeypatch, "/approve")
     api = Api(permission=False)
     monkeypatch.setattr(cli, "GitHub", lambda: api)
     cli.gate(args)
     assert "mode=ignored" in (tmp_path / "output").read_text()
 
 
-def test_cli_explicit_command_and_push_failure_do_not_claim_success(tmp_path, monkeypatch):
+def test_cli_regular_approval_and_push_failure_do_not_claim_success(tmp_path, monkeypatch):
     args, _ = prepare(tmp_path, monkeypatch)
     event = read_json(tmp_path / "event.json")
-    event["comment"]["body"] = "/approve-relist"
+    event["comment"]["body"] = "/approve"
     write_json(tmp_path / "event.json", event)
     monkeypatch.setattr(cli.GitHub, "permission", lambda *a: True)
     allowed = []
-    monkeypatch.setattr(cli, "approve", lambda *a, **kw: allowed.append(kw["allow_relisting"]) or True)
+    monkeypatch.setattr(cli, "approve", lambda *a, **kw: allowed.append(True) or True)
     def run(command, **kw):
         if command == ["git", "push"]:
             raise RuntimeError("push failed")
@@ -142,7 +146,7 @@ def test_cli_explicit_command_and_push_failure_do_not_claim_success(tmp_path, mo
     assert not (args.work / "publication.json").exists()
 
 
-def test_review_report_shows_withdrawal_and_explicit_command(tmp_path, monkeypatch):
+def test_review_report_shows_withdrawal_and_regular_approval_command(tmp_path, monkeypatch):
     from test_review_report import reports
     args, _ = context(tmp_path, monkeypatch)
     req, validation, ai = reports()
@@ -159,5 +163,5 @@ def test_review_report_shows_withdrawal_and_explicit_command(tmp_path, monkeypat
     cli.publish(args)
     assert "下架插件重新上架申请" in comments[0]
     assert "旧版本有问题" in comments[0]
-    assert "`/approve-relist`" in comments[0]
+    assert "`/approve`" in comments[0]
     assert "旧版本继续下架" in comments[0]

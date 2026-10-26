@@ -75,7 +75,7 @@ def assert_binding(root, request, *, allow_withdrawn=False):
             if name != request["plugin_name"] or repository(entry["repository"]) != request["repository"]:
                 raise ValueError("插件名称已绑定其他仓库，迁移必须走修改登记流程")
             if not is_active(entry) and not allow_withdrawn:
-                raise ValueError("插件已下架，修复版须重新审核并由维护者使用 /approve-relist 批准重新上架")
+                raise ValueError("插件已下架，修复版须先 /recheck 并由维护者审阅报告后使用 /approve 批准重新上架")
             return entry
 
 

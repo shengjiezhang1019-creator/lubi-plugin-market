@@ -70,7 +70,7 @@ class GitHub:
         text = text.replace("@", "＠")
         # 只过滤独立命令行；不能破坏源码链接或机器可读 base64 内部的斜线。
         text = re.sub(
-            r"(?m)^([ \t]*)(/approve-relist|/approve|/ap|/reject|/recheck|/mai_review)(?=\s|$)",
+            r"(?m)^([ \t]*)(/approve|/ap|/reject|/recheck|/mai_review)(?=\s|$)",
             lambda match: match[1] + match[2].replace("/", "／"), text,
         )
         if len(text) > 60000:

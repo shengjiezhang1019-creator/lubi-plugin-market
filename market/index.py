@@ -36,7 +36,7 @@ def build_catalog(root):
     return catalog
 
 
-def approve(root, validation, ai, actor, issue_number, *, allow_relisting=False):
+def approve(root, validation, ai, actor, issue_number):
     root = Path(root)
     if validation.get("status") != "validated" or validation.get("dependency_status") != "runtime":
         raise ValueError("未完成正式静态与依赖声明检查，不能收录")
@@ -47,7 +47,7 @@ def approve(root, validation, ai, actor, issue_number, *, allow_relisting=False)
     if ai.get("status") != "completed" or ai.get("commit") != validation["commit"] or ai.get("validation_fingerprint") != fingerprint:
         raise ValueError("缺少绑定当前内容的完整 AI 报告")
     request = validation["request"]
-    registered = assert_binding(root, request, allow_withdrawn=allow_relisting)
+    registered = assert_binding(root, request, allow_withdrawn=bool(validation.get("relisting")))
     withdrawn = registered is not None and not is_active(registered)
     if withdrawn:
         context = review_context(root, request)
