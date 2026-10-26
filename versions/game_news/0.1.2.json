@@ -1,0 +1,112 @@
+{
+  "actor": "shengjiezhang1019-creator",
+  "ai_review": {
+    "commit": "f91d88e195cb8ab547f1fadbb3bfce28dc83a874",
+    "files_read": [
+      "LICENSE",
+      "README.md",
+      "_manifest.json",
+      "commands.py",
+      "news.py",
+      "plugin.py"
+    ],
+    "findings": [
+      {
+        "evidence": "plain() 先用正则移除 `<...>`，再调用 html.unescape。若 RSS 标题或摘要包含 `&lt;script&gt;` 等 HTML 实体，第一步不会匹配为标签，unescape 后会变成 `<script>`。这些值随后进入 ctx.display.add_fields 和模型上下文。",
+        "file": "news.py",
+        "impact": "若宿主展示层对 add_fields/表格字段未做 HTML 转义，远端 RSS 内容或源站被篡改后可能引入 HTML/脚本片段；即使展示层转义，也可能对模型构成提示注入。",
+        "line": 26,
+        "severity": "question",
+        "suggestion": "建议先 unescape 再去除标签，或改用保留纯文本且不引入可执行标记的方式清洗；同时确认宿主渲染层对 add_fields 表格字段逐项转义。"
+      }
+    ],
+    "limitations": "本次为源码静态审核，未实际运行插件、未安装依赖，也未在宿主中测试 Hook 派发和字段渲染。上述发现的影响取决于宿主展示层是否转义，依据不足故列为 question。验证信息中 component_analysis 对 _RssTreeBuilder 继承关系未能静态解析，但源码确认其继承 xml.etree.ElementTree.TreeBuilder，未发现异常。RSS 为远程固定来源，仍需依赖源站内容可信度。",
+    "model": "deepseek-v4-pro-0813",
+    "prompt_sha256": "6245625b69f2f888e033dbe0e09bce061314e4970d6992225472c61b084cc592",
+    "status": "completed",
+    "summary": "该插件是露比游戏新闻台 Hook Command 插件：在 BEFORE_REPLY_CONTEXT 阶段识别游戏新闻请求，读取固定的 indienova HTTPS RSS，最多返回三条近期资讯并交给宿主模型讲述，同时通过 add_fields 展示来源。代码未发现文件读写、命令执行、eval/exec、凭据外传或用户可控 SSRF；网络访问为固定域名且禁止重定向，XML 解析拒绝 DTD 和自定义实体。主要需确认远程 RSS 文本在展示/提示词中的转义顺序。",
+    "validation_fingerprint": "d1d3f17e39065a1434cf489420c6eadc57f2f04b85ad0cde27f81cf4e40ab343"
+  },
+  "issue_number": 13,
+  "status": "approved",
+  "validation": {
+    "checks": [
+      {
+        "location": "news.py:12",
+        "message": "使用第三方依赖 aiohttp",
+        "name": "import_allowlist",
+        "status": "warn"
+      },
+      {
+        "location": null,
+        "message": "危险模式扫描：未发现",
+        "name": "dangerous_pattern",
+        "status": "pass"
+      },
+      {
+        "location": null,
+        "message": "静态识别组件类型：command；无法完全静态确认，需人工核实：news.py:19 类 _RssTreeBuilder 的继承关系未解析",
+        "name": "component_types",
+        "status": "warn"
+      }
+    ],
+    "commit": "f91d88e195cb8ab547f1fadbb3bfce28dc83a874",
+    "component_analysis": {
+      "status": "unknown",
+      "types": [
+        "command"
+      ],
+      "warnings": [
+        "news.py:19 类 _RssTreeBuilder 的继承关系未解析"
+      ]
+    },
+    "dependency_policy": {
+      "declared": [
+        {
+          "name": "aiohttp",
+          "version": ">=3.12.14"
+        }
+      ],
+      "installation_tested": false,
+      "policy": "runtime-environment-v1",
+      "runtime_tested": false
+    },
+    "dependency_status": "runtime",
+    "fingerprint": "d1d3f17e39065a1434cf489420c6eadc57f2f04b85ad0cde27f81cf4e40ab343",
+    "manifest": {
+      "author": {
+        "name": "zhangshengjie-xsw"
+      },
+      "category": "information",
+      "description": "露比游戏新闻台：按请求获取游戏资讯，供露比讲述并展示原文来源",
+      "license": "MIT",
+      "name": "game_news",
+      "plugin_dependencies": [],
+      "python_dependencies": [
+        {
+          "name": "aiohttp",
+          "version": ">=3.12.14"
+        }
+      ],
+      "tags": [
+        "游戏",
+        "新闻",
+        "command",
+        "hook"
+      ],
+      "version": "0.1.2"
+    },
+    "published_at": "2026-10-26T07:49:23Z",
+    "release_notes": "为重新申请露比插件市场审核发布新版本。\r\n\r\n- 清单版本更新为 0.1.2，README 同步更新。\r\n- 功能代码与 v0.1.1 相同，保留 RSS XML 解析器层拒绝 DTD 和自定义实体的修复。\r\n- 不覆盖历史版本标签；本次发布不代表已获市场批准。",
+    "request": {
+      "plugin_name": "game_news",
+      "repository": "https://github.com/zhangshengjie-xsw/lubi-game-news",
+      "tag": "v0.1.2"
+    },
+    "rules_fingerprint": "d5d848d377864eabb0b125cf4ac7a25378dff5e577edfc4c7dd469da4f0a0cd6",
+    "schema_version": 1,
+    "sha256": "013f9f9567ddddcb6c26ebb14b5cf5768bed124a51dd50c3f54d1bd94cbe352c",
+    "source_dir": "source/lubi-game-news-f91d88e195cb8ab547f1fadbb3bfce28dc83a874",
+    "status": "validated"
+  }
+}

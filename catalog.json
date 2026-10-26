@@ -1,1 +1,53 @@
-[]
+[
+  {
+    "commit": "f91d88e195cb8ab547f1fadbb3bfce28dc83a874",
+    "comp_types": [
+      "command"
+    ],
+    "dependency_policy": {
+      "declared": [
+        {
+          "name": "aiohttp",
+          "version": ">=3.12.14"
+        }
+      ],
+      "installation_tested": false,
+      "policy": "runtime-environment-v1",
+      "runtime_tested": false
+    },
+    "id": "game_news",
+    "manifest": {
+      "author": {
+        "name": "zhangshengjie-xsw"
+      },
+      "category": "information",
+      "description": "露比游戏新闻台：按请求获取游戏资讯，供露比讲述并展示原文来源",
+      "license": "MIT",
+      "name": "game_news",
+      "plugin_dependencies": [],
+      "python_dependencies": [
+        {
+          "name": "aiohttp",
+          "version": ">=3.12.14"
+        }
+      ],
+      "tags": [
+        "游戏",
+        "新闻",
+        "command",
+        "hook"
+      ],
+      "version": "0.1.2"
+    },
+    "published_at": "2026-10-26T07:49:23Z",
+    "release_notes": "为重新申请露比插件市场审核发布新版本。\r\n\r\n- 清单版本更新为 0.1.2，README 同步更新。\r\n- 功能代码与 v0.1.1 相同，保留 RSS XML 解析器层拒绝 DTD 和自定义实体的修复。\r\n- 不覆盖历史版本标签；本次发布不代表已获市场批准。",
+    "repositoryUrl": "https://github.com/zhangshengjie-xsw/lubi-game-news",
+    "sha256": "013f9f9567ddddcb6c26ebb14b5cf5768bed124a51dd50c3f54d1bd94cbe352c",
+    "tags": [
+      "游戏",
+      "新闻",
+      "command",
+      "hook"
+    ]
+  }
+]

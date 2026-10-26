@@ -1,4 +1,9 @@
 {
-  "plugins": {},
+  "plugins": {
+    "game_news": {
+      "issue_number": 13,
+      "repository": "https://github.com/zhangshengjie-xsw/lubi-game-news"
+    }
+  },
   "schema_version": 1
 }
