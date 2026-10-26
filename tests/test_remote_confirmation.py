@@ -87,7 +87,7 @@ class RemoteApi(Api):
 
 
 def terminal(tmp_path, monkeypatch, status):
-    args, _ = context(tmp_path, monkeypatch, "/recheck")
+    args, _ = context(tmp_path, monkeypatch)
     request = cli.issue_request(Api().issue["body"])
     record = {"status": status, "issue_number": 1, "request": request}
     write_json(tmp_path / "versions/sample/1.0.0.json", record)
@@ -95,7 +95,7 @@ def terminal(tmp_path, monkeypatch, status):
 
 
 @pytest.mark.parametrize("status,label", [("approved", "已上架"), ("rejected", "需修改后重新申请")])
-def test_original_issue_recheck_keeps_remote_terminal_state(tmp_path, monkeypatch, status, label):
+def test_original_issue_edit_keeps_remote_terminal_state(tmp_path, monkeypatch, status, label):
     args, record = terminal(tmp_path, monkeypatch, status)
     api = RemoteApi(record)
     monkeypatch.setattr(cli, "GitHub", lambda: api)

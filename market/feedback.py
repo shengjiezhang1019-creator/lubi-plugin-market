@@ -31,9 +31,7 @@ def authorized_issue(api, slug, event):
         return issue, event.get("action") in {"opened", "edited"}
     command = event["comment"].get("body", "").strip()
     actor = event["comment"].get("user", {}).get("login", "")
-    if command == "/recheck" and actor == issue.get("user", {}).get("login"):
-        return issue, True
-    if command in {"/recheck", "/approve"} or command.startswith("/reject "):
+    if command in {"/approve", "/reject"}:
         return issue, api.permission(slug, actor)
     return issue, False
 
@@ -81,8 +79,8 @@ def failure_detail(stage, exc):
     if isinstance(exc, ExistingVersionError):
         status = {"approved": "已批准", "rejected": "需修改后重新申请"}.get(exc.status, "已有处理")
         original = f"请查看原申请 #{exc.issue_number}。" if exc.issue_number else "请维护者查看该版本的历史记录。"
-        return f"该版本{status}，不会重复送交 AI 审核。", original + "如需修改源码，请发布新版本后申请，不要对原版本反复 /recheck。"
-    retry = "无需修改插件。请稍后在本申请下评论 `/recheck`；仍失败时由市场维护者查看日志。"
+        return f"该版本{status}，不会重复送交 AI 审核。", original + "如需修改源码，请发布新版本后申请，不要覆盖原版本。"
+    retry = "无需修改插件。请市场维护者在 GitHub Actions 中重跑对应审核任务；仍未完成时查看日志。"
     if stage == "gate" and isinstance(exc, ValueError):
         for field in ("插件名称", "GitHub 仓库", "Release 标签"):
             if message == "申请缺少 " + field:
@@ -93,7 +91,7 @@ def failure_detail(stage, exc):
             return "Release 标签格式不正确。", "请填写已公开发布的正式 Release 标签，例如 v1.0.0；编辑原申请后重新检查。"
         if message in {"仅支持公开 GitHub HTTPS 仓库根地址", "仓库名称不合法"}:
             return "GitHub 仓库地址格式不正确。", "请填写公开仓库根地址，例如 https://github.com/作者/仓库；编辑原申请后重新检查。"
-        return "缺少可复核的审核结果，或申请内容需要重新检查。", "请先评论 `/recheck` 生成完整报告，再由维护者审阅并批准。"
+        return "缺少可复核的审核结果，或申请内容需要重新检查。", "请由维护者重跑审核任务生成完整报告，再由维护者审阅并批准。"
     if stage == "validate" and isinstance(exc, ValueError):
         if message.startswith("重新上架必须提交"):
             return "下架插件需要提交高于历史记录的新版本。", "请发布新的正式版本并更新原申请的 Release 标签；不要覆盖或移动历史版本。"
@@ -120,9 +118,9 @@ def failure_detail(stage, exc):
         return "AI 审核服务暂时不可用或配置异常，尚未完成审核。", retry
     if stage == "publish":
         if isinstance(exc, ValueError) and message.startswith("插件已下架"):
-            return "下架状态尚未绑定完整的重新上架审核报告。", "请先 `/recheck`，由维护者审阅重新上架报告及下架原因，再评论 `/approve`。"
+            return "下架状态尚未绑定完整的重新上架审核报告。", "请重新提交申请完成审核，由维护者审阅重新上架报告及下架原因，再评论 `/approve`。"
         if isinstance(exc, ValueError):
-            return "批准内容与当前申请、源码或已发布的审核报告不一致，或审核尚未完成。", "请先评论 `/recheck`，重新检查和审阅后再由维护者批准。"
+            return "批准内容与当前申请、源码或已发布的审核报告不一致，或审核尚未完成。", "请重新提交申请，完成检查和审阅后再由维护者批准。"
         return "审核报告或市场索引发布失败，尚未确认上架成功。", "请由维护者查看发布日志。若已批准，请确认索引状态后重试 `/approve`；勿修改或重复发布同一版本。"
     if stage == "reject":
         return "拒绝结果未能完整发布，尚未确认处理成功。", "请由维护者查看日志，确认版本记录和申请状态后再处理。"

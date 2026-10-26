@@ -83,9 +83,9 @@ def approve(root, validation, ai, actor, issue_number):
     if withdrawn:
         context = review_context(root, request)
         if validation.get("relisting") != context:
-            raise ValueError("下架状态或原因已变化，请 /recheck 后重新审阅重新上架申请")
+            raise ValueError("下架状态或原因已变化，请重新提交申请并审阅重新上架申请")
     elif validation.get("relisting") and review_context(root, request) != validation["relisting"]:
-        raise ValueError("市场状态已变化，请 /recheck 后重新审阅")
+        raise ValueError("市场状态已变化，请重新提交申请并审阅")
     path = root / "versions" / request["plugin_name"] / (validation["manifest"]["version"] + ".json")
     if path.exists():
         old = read_json(path)

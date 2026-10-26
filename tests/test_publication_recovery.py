@@ -74,7 +74,7 @@ def test_existing_version_is_rejected_before_network_or_ai(tmp_path, monkeypatch
     assert "新版本" in next_step
 
 
-@pytest.mark.parametrize("status,command", [("approved", "/approve"), ("rejected", "/reject reason")])
+@pytest.mark.parametrize("status,command", [("approved", "/approve"), ("rejected", "/reject")])
 def test_only_same_issue_can_resume_existing_result(tmp_path, status, command):
     write_json(tmp_path / "registry.json", {"plugins": {}})
     record = {"status": status, "issue_number": 12, "request": request()}
