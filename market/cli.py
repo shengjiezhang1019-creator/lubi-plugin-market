@@ -21,6 +21,8 @@ from .index import approve, build_catalog
 from .pipeline import validate
 from .review_report import render_review
 from .requests import check_existing_request
+from .publication import push_index
+from .feedback import complete_existing
 
 MARKER = "<!-- lubi-market-validation:"
 
@@ -108,12 +110,9 @@ def publish(args):
         assert_prompt_unchanged(ai, args.root)
         assert_prompt_unchanged(approved_ai, args.root)
         assert_release_unchanged(api, validation)
-        changed = approve(args.root, validation, approved_ai, actor, number)
-        if changed:
-            subprocess.run(["git", "add", "registry.json", "catalog.json", "versions"], cwd=args.root, check=True)
-            subprocess.run(["git", "commit", "-m", f"Approve {request['plugin_name']} {request['tag']}"], cwd=args.root, check=True)
-            # push 失败不得报告成功或关闭申请；concurrency + 无强推防止覆盖并发变更。
-            subprocess.run(["git", "push"], cwd=args.root, check=True)
+        approve(args.root, validation, approved_ai, actor, number)
+        push_index(args.root, f"Approve {request['plugin_name']} {request['tag']}",
+                   ["registry.json", "catalog.json", "versions"], subprocess.run)
         write_json(args.work / "publication.json", {"stage": "publish", "status": "已上架", "request": request})
         set_status(api, slug, number, "已上架")
         api.comment(slug, number, f"✅ 已上架：已收录 {request['plugin_name']} {request['tag']}，commit `{validation['commit']}`。")
@@ -169,8 +168,12 @@ def gate(args):
     mode = "approve" if command == "/approve" else "reject" if command.startswith("/reject ") else "review"
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
         stream.write("eligible=true\nmode=" + mode + "\n")
-    set_status(api, slug, number, "检查中")
     request = issue_request(issue.get("body", ""))
+    if complete_existing(args, api, slug, number, request, event):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+            stream.write("eligible=false\nmode=ignored\n")
+        return
+    set_status(api, slug, number, "检查中")
     check_existing_request(args.root, request, resume_issue=number if mode in {"approve", "reject"} else None,
                            resume_status="approved" if mode == "approve" else "rejected")
     args.work.mkdir(parents=True, exist_ok=True)
@@ -240,9 +243,7 @@ def reject(args):
         reason = command[8:].strip()
         write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": reason,
                           "issue_number": int(number)})
-        subprocess.run(["git", "add", "versions"], cwd=args.root, check=True)
-        subprocess.run(["git", "commit", "-m", f"Reject {req['plugin_name']} {req['tag']}"], cwd=args.root, check=True)
-        subprocess.run(["git", "push"], cwd=args.root, check=True)
+    push_index(args.root, f"Reject {req['plugin_name']} {req['tag']}", ["versions"], subprocess.run)
     write_json(args.work / "publication.json", {"stage": "reject", "status": "已拒绝", "request": req})
     set_status(api, slug, number, "已拒绝")
     api.comment(slug, number, "已拒绝本版本：" + reason)

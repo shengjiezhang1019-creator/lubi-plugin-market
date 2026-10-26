@@ -17,7 +17,7 @@ def test_label_failure_still_notifies_author(tmp_path, monkeypatch):
     assert "secret" not in api.comments[0]["body"]
 
 
-def test_reject_retry_completes_existing_result_without_overwriting_or_pushing(tmp_path, monkeypatch):
+def test_reject_retry_completes_existing_result_without_overwriting(tmp_path, monkeypatch):
     args, _ = context(tmp_path, monkeypatch, "/reject 改了的原因")
     api = Api()
     request = cli.issue_request(api.issue["body"])
@@ -27,13 +27,15 @@ def test_reject_retry_completes_existing_result_without_overwriting_or_pushing(t
     write_json(path, record)
     monkeypatch.setattr(cli.GitHub, "permission", lambda *a: True)
     monkeypatch.setattr(cli, "snapshot_issue", lambda *a: (api.issue, request))
-    monkeypatch.setattr(cli.subprocess, "run", lambda *a, **kw: pytest.fail("已发布记录不能再次 push"))
+    commands = []
+    monkeypatch.setattr(cli.subprocess, "run", lambda command, **kw: commands.append(command[1]) or cli.subprocess.CompletedProcess(command, 0))
     statuses, comments, closes = [], [], []
     monkeypatch.setattr(cli, "set_status", lambda *a: statuses.append(a[-1]))
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: comments.append(a[-1]))
     monkeypatch.setattr(cli.GitHub, "request", lambda *a: closes.append(a[-1]))
     cli.reject(args)
     assert read_json(path) == record
+    assert commands == ["add", "diff", "push"]
     assert statuses == ["已拒绝"]
     assert "原始拒绝原因" in comments[0]
     assert closes == [{"state": "closed"}]

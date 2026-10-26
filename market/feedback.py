@@ -10,6 +10,9 @@ from urllib.parse import quote
 from .common import read_json, write_json
 from .github import GitHubAPIError
 from .requests import ExistingVersionError
+from .requests import local_result
+from .publication import published_result
+from .common import object_digest
 
 LABELS = {
     "检查中": "fbca04", "检查失败": "d73a4a", "待人工审核": "0075ca",
@@ -131,6 +134,25 @@ def record_failure(work, stage, exc):
     write_json(work / "failure.json", {"stage": stage, "reason": reason, "next_step": next_step})
 
 
+def complete_existing(args, api, slug, number, request, event):
+    # 本地记录可能尚未推送，必须从默认分支确认，不能据本地状态宣布成功。
+    if local_result(args.root, request, number) is None:
+        return False
+    record = published_result(api, slug, request, number, event.get("repository", {}).get("default_branch"))
+    if record is None:
+        return False
+    status = "已上架" if record["status"] == "approved" else "已拒绝"
+    marker = f"<!-- lubi-market-complete:{number}:{record['status']}:{object_digest(request)} -->"
+    safe_set_status(api, slug, number, status)
+    if not any(marker in comment.get("body", "") and comment.get("user", {}).get("login") == "github-actions[bot]"
+               and comment.get("user", {}).get("type") == "Bot"
+               for comment in api.pages(f"/repos/{slug}/issues/{number}/comments")):
+        api.comment(slug, number, f"此申请的版本记录已在市场默认分支确认：**{status}**。无需重复审核。"
+                    "本次仅补完申请反馈，不修改版本或市场上下架状态。\n\n" + marker)
+    api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
+    return True
+
+
 def failure(args, api):
     event = read_json(os.environ["GITHUB_EVENT_PATH"])
     slug = os.environ["GITHUB_REPOSITORY"]
@@ -138,6 +160,13 @@ def failure(args, api):
     if not allowed:
         return
     number = issue["number"]
+    from .cli import issue_request
+    try:
+        request = issue_request(issue.get("body", ""))
+    except ValueError:
+        request = None
+    if request is not None and complete_existing(args, api, slug, number, request, event):
+        return
     results = json.loads(os.environ.get("MARKET_JOB_RESULTS", "{}"))
     stage = next((name for name in STAGES if results.get(name, {}).get("result") == "failure"), "unknown")
     reason, next_step = failure_detail(stage, RuntimeError())
@@ -149,7 +178,6 @@ def failure(args, api):
             reason, next_step = detail["reason"], detail["next_step"]
             break
     # push 成功后才写该证据。后续标签、评论、关闭失败不能反向宣称索引未发布。
-    from .cli import issue_request
     for path in args.work.rglob("publication.json"):
         publication = read_json(path)
         if (publication.get("stage") == stage and publication.get("request") == issue_request(issue.get("body", ""))

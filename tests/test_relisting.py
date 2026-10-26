@@ -138,6 +138,7 @@ def test_cli_regular_approval_and_push_failure_do_not_claim_success(tmp_path, mo
     def run(command, **kw):
         if command == ["git", "push"]:
             raise RuntimeError("push failed")
+        return cli.subprocess.CompletedProcess(command, 1)
     monkeypatch.setattr(cli.subprocess, "run", run)
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: pytest.fail("push 失败不能宣布重新上架"))
     with pytest.raises(RuntimeError, match="push failed"):

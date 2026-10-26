@@ -198,12 +198,12 @@ def test_reject_updates_status_only_after_push(tmp_path, monkeypatch):
     output = []
     monkeypatch.setattr(cli.GitHub, "permission", lambda *a: True)
     monkeypatch.setattr(cli, "snapshot_issue", lambda *a: ({"state": "open"}, request))
-    monkeypatch.setattr(cli.subprocess, "run", lambda command, **kw: output.append(command[1]))
+    monkeypatch.setattr(cli.subprocess, "run", lambda command, **kw: output.append(command[1]) or cli.subprocess.CompletedProcess(command, 1))
     monkeypatch.setattr(cli, "set_status", lambda *a: output.append(a[-1]))
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: output.append("comment"))
     monkeypatch.setattr(cli.GitHub, "request", lambda *a: output.append("close"))
     cli.reject(args)
-    assert output == ["add", "commit", "push", "已拒绝", "comment", "close"]
+    assert output == ["add", "diff", "commit", "push", "已拒绝", "comment", "close"]
     assert read_json(args.work / "publication.json")["status"] == "已拒绝"
 
 

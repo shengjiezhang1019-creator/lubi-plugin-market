@@ -23,3 +23,16 @@ def check_existing_request(root, request, *, resume_issue=None, resume_status=No
             and record.get("status") == resume_status and original_request == request):
         return
     raise ExistingVersionError(record)
+
+
+def local_result(root, request, issue_number):
+    assert_binding(root, request, allow_withdrawn=True)
+    path = Path(root) / "versions" / request["plugin_name"] / (request["tag"][1:] + ".json")
+    if not path.is_file():
+        return None
+    record = read_json(path)
+    original_request = record.get("request") or record.get("validation", {}).get("request")
+    if (record.get("status") in {"approved", "rejected"} and record.get("issue_number") == issue_number
+            and original_request == request):
+        return record
+    return None
