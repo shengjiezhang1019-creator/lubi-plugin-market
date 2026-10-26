@@ -26,6 +26,7 @@ def rules_fingerprint():
         Path(__file__).resolve(),
         REVIEW_PROMPT,
         Path(__file__).resolve().parent / "relisting.py",
+        Path(__file__).resolve().parent / "requests.py",
     ]
     return object_digest({path.name: digest(path.read_bytes()) for path in files})
 

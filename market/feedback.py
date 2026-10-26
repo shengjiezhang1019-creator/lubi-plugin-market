@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 from .common import read_json, write_json
 from .github import GitHubAPIError
+from .requests import ExistingVersionError
 
 LABELS = {
     "检查中": "fbca04", "检查失败": "d73a4a", "待人工审核": "0075ca",
@@ -74,6 +75,10 @@ def safe_set_status(api, slug, number, status):
 def failure_detail(stage, exc):
     """只返回可信模板，异常正文中可能包含源码、服务响应或密钥，绝不直接拼接。"""
     message = str(exc)
+    if isinstance(exc, ExistingVersionError):
+        status = {"approved": "已批准", "rejected": "已拒绝"}.get(exc.status, "已有处理")
+        original = f"请查看原申请 #{exc.issue_number}。" if exc.issue_number else "请维护者查看该版本的历史记录。"
+        return f"该版本{status}，不会重复送交 AI 审核。", original + "如需修改源码，请发布新版本后申请，不要对原版本反复 /recheck。"
     retry = "无需修改插件。请稍后在本申请下评论 `/recheck`；仍失败时由市场维护者查看日志。"
     if stage == "gate" and isinstance(exc, ValueError):
         for field in ("插件名称", "GitHub 仓库", "Release 标签"):

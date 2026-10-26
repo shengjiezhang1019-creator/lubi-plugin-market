@@ -44,6 +44,7 @@ class Api:
 
 
 def context(tmp_path, monkeypatch, comment=None):
+    write_json(tmp_path / "registry.json", {"schema_version": 1, "plugins": {}})
     event = {"action": "opened", "issue": {"number": 1}}
     if comment:
         event["comment"] = {"body": comment, "user": {"login": "author"}}

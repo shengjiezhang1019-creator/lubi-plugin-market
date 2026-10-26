@@ -20,6 +20,7 @@ from .feedback import authorized_issue, failure, record_failure, safe_set_status
 from .index import approve, build_catalog
 from .pipeline import validate
 from .review_report import render_review
+from .requests import check_existing_request
 
 MARKER = "<!-- lubi-market-validation:"
 
@@ -170,6 +171,8 @@ def gate(args):
         stream.write("eligible=true\nmode=" + mode + "\n")
     set_status(api, slug, number, "检查中")
     request = issue_request(issue.get("body", ""))
+    check_existing_request(args.root, request, resume_issue=number if mode in {"approve", "reject"} else None,
+                           resume_status="approved" if mode == "approve" else "rejected")
     args.work.mkdir(parents=True, exist_ok=True)
     write_json(args.work / "request.json", request)
     if mode == "approve":
@@ -269,7 +272,10 @@ def run_action(args):
     if args.action == "gate":
         gate(args)
     elif args.action == "validate":
-        validate(args.root, read_json(args.request or args.work / "request.json"), args.work, static_only=args.static_only)
+        event = read_json(os.environ["GITHUB_EVENT_PATH"]) if os.environ.get("GITHUB_EVENT_PATH") else {}
+        resume_issue = event.get("issue", {}).get("number") if event.get("comment", {}).get("body", "").strip() == "/approve" else None
+        validate(args.root, read_json(args.request or args.work / "request.json"), args.work,
+                 static_only=args.static_only, resume_issue=resume_issue)
     elif args.action == "ai":
         validation = read_json(args.work / "validation.json")
         if (args.work / "previous-ai.json").exists():

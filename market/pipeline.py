@@ -7,13 +7,15 @@ from .common import COMMIT, object_digest, validate_request, write_json
 from .dependencies import declaration_report
 from .github import GitHub
 from .relisting import review_context
+from .requests import check_existing_request
 from .rules.component_types import analyze_component_types
 from .validation import framework_check, manifest_check, rules_fingerprint
 
 
-def validate(root, request, work, *, static_only=False, archive_data=None, commit=None, release=None):
+def validate(root, request, work, *, static_only=False, archive_data=None, commit=None, release=None, resume_issue=None):
     root, work = Path(root), Path(work)
     request = validate_request(request)
+    check_existing_request(root, request, resume_issue=resume_issue, resume_status="approved")
     relisting = review_context(root, request)
     if archive_data is None:
         release, commit = GitHub().release(request["repository"], request["tag"])
