@@ -3,7 +3,7 @@
 独立于露比主程序的 GitHub 市场项目。目标流程：
 
 ```text
-作者发布公开 Release → Issue 申请 / 定时发现
+作者发布公开 Release → 作者手动提交 Issue 申请
 → 固定 commit 与 ZIP SHA256 → 框架静态检查 → 依赖声明检查
 → AI 阅读源码生成报告 → 维护者 /approve → 写入 registry、versions、catalog
 ```
@@ -45,10 +45,7 @@ request.json：
 3. Repository Variables：`REVIEW_API_BASE`（如供应商的 HTTPS OpenAI-compatible v1 地址）、
    `REVIEW_MODEL`；Secret：`REVIEW_API_KEY`。CLI 使用通用兼容请求，不预设模型或收费账号。
    当前仓库已配置：百炼兼容接口 `https://dashscope.aliyuncs.com/compatible-mode/v1`，模型 `deepseek-v4-pro-0813`；密钥仅存 GitHub Secret。已通过真实示例审核：模型返回有效 JSON 且完成全部文件阅读校验。
-4. 定时发现需要 `MARKET_APP_ID`、`MARKET_APP_PRIVATE_KEY` 对应的 GitHub App，授予市场仓库
-   Contents read、Issues read/write。使用 App 创建的 Issue 才能触发后续审核工作流。
-   未配置时可以由作者直接提交 Issue，不影响手工申请。
-5. 仓库允许 Actions 的批准任务提交 registry/catalog/versions；分支保护需允许指定机器人提交，
+4. 仓库允许 Actions 的批准任务提交 registry/catalog/versions；分支保护需允许指定机器人提交，
    或由维护者调整为受保护的提交方式。失败不会报告上架成功。
 
 实际安装兼容性以运行露比的系统、Python 和包索引为准；市场不以某个审核机器的环境冒充所有部署环境。
@@ -101,7 +98,6 @@ request.json：
 - 维护者读完机器人报告，单独评论 `/approve`。任务重新下载并验证，匹配已发布报告的指纹及原 AI 报告，
   检查内容变化需重新审阅，不盲目批准后来的源码。
 - `/reject` 仅维护者可用，保存拒绝记录；不能重推同名版本绕过。
-- 定时扫描为北京时间 02:00、15:00，GitHub 调度可能延迟，支持手动运行。
 - 普通版本更新沿用原登记；仓库迁移和维护者转让暂不开放申请，后续再补相应流程。
   同步更新已有版本记录的归属需专门迁移工具；第一版不自动转移。
 - 支持维护者通过 Actions 手动下架或恢复整个插件，保留版本及操作历史；详见 [下架与恢复](docs/plugin-withdrawal.md)。不因网络失败删除条目。
