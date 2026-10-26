@@ -20,6 +20,9 @@ from .feedback import authorized_issue, failure, record_failure, safe_set_status
 from .index import approve, build_catalog
 from .pipeline import validate
 from .review_report import render_review
+from .requests import check_existing_request
+from .publication import push_index
+from .feedback import complete_existing
 
 MARKER = "<!-- lubi-market-validation:"
 
@@ -107,18 +110,22 @@ def publish(args):
         assert_prompt_unchanged(ai, args.root)
         assert_prompt_unchanged(approved_ai, args.root)
         assert_release_unchanged(api, validation)
-        changed = approve(args.root, validation, approved_ai, actor, number)
-        if changed:
-            subprocess.run(["git", "add", "registry.json", "catalog.json", "versions"], cwd=args.root, check=True)
-            subprocess.run(["git", "commit", "-m", f"Approve {request['plugin_name']} {request['tag']}"], cwd=args.root, check=True)
-            # push 失败不得报告成功或关闭申请；concurrency + 无强推防止覆盖并发变更。
-            subprocess.run(["git", "push"], cwd=args.root, check=True)
+        approve(args.root, validation, approved_ai, actor, number)
+        push_index(args.root, f"Approve {request['plugin_name']} {request['tag']}",
+                   ["registry.json", "catalog.json", "versions"], subprocess.run)
         write_json(args.work / "publication.json", {"stage": "publish", "status": "已上架", "request": request})
         set_status(api, slug, number, "已上架")
         api.comment(slug, number, f"✅ 已上架：已收录 {request['plugin_name']} {request['tag']}，commit `{validation['commit']}`。")
         api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
     else:
         report = render_review(validation, ai, request)
+        if validation.get("relisting"):
+            from .review_report import text
+            withdrawal = validation["relisting"]["withdrawal"]
+            report = ("## 下架插件重新上架申请\n\n旧版本继续下架，尚未恢复。\n\n"
+                      + "**下架原因：** " + text(withdrawal.get("reason", "历史记录未填写"))
+                      + "\n\n维护者确认修复版可重新上架后，单独评论 `/approve`。批准后恢复市场展示并提供本次修复版，旧版不会先行恢复。\n\n"
+                      + report)
         # 原始完整 AI JSON 存放在机器人评论的独立机器可读标记；不作为 shell 或批准指令。
         import base64
         payload = base64.b64encode(json.dumps(ai, ensure_ascii=False, sort_keys=True).encode()).decode()
@@ -161,8 +168,14 @@ def gate(args):
     mode = "approve" if command == "/approve" else "reject" if command.startswith("/reject ") else "review"
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
         stream.write("eligible=true\nmode=" + mode + "\n")
-    set_status(api, slug, number, "检查中")
     request = issue_request(issue.get("body", ""))
+    if complete_existing(args, api, slug, number, request, event):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+            stream.write("eligible=false\nmode=ignored\n")
+        return
+    set_status(api, slug, number, "检查中")
+    check_existing_request(args.root, request, resume_issue=number if mode in {"approve", "reject"} else None,
+                           resume_status="approved" if mode == "approve" else "rejected")
     args.work.mkdir(parents=True, exist_ok=True)
     write_json(args.work / "request.json", request)
     if mode == "approve":
@@ -230,9 +243,7 @@ def reject(args):
         reason = command[8:].strip()
         write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": reason,
                           "issue_number": int(number)})
-        subprocess.run(["git", "add", "versions"], cwd=args.root, check=True)
-        subprocess.run(["git", "commit", "-m", f"Reject {req['plugin_name']} {req['tag']}"], cwd=args.root, check=True)
-        subprocess.run(["git", "push"], cwd=args.root, check=True)
+    push_index(args.root, f"Reject {req['plugin_name']} {req['tag']}", ["versions"], subprocess.run)
     write_json(args.work / "publication.json", {"stage": "reject", "status": "已拒绝", "request": req})
     set_status(api, slug, number, "已拒绝")
     api.comment(slug, number, "已拒绝本版本：" + reason)
@@ -262,7 +273,10 @@ def run_action(args):
     if args.action == "gate":
         gate(args)
     elif args.action == "validate":
-        validate(args.root, read_json(args.request or args.work / "request.json"), args.work, static_only=args.static_only)
+        event = read_json(os.environ["GITHUB_EVENT_PATH"]) if os.environ.get("GITHUB_EVENT_PATH") else {}
+        resume_issue = event.get("issue", {}).get("number") if event.get("comment", {}).get("body", "").strip() == "/approve" else None
+        validate(args.root, read_json(args.request or args.work / "request.json"), args.work,
+                 static_only=args.static_only, resume_issue=resume_issue)
     elif args.action == "ai":
         validation = read_json(args.work / "validation.json")
         if (args.work / "previous-ai.json").exists():

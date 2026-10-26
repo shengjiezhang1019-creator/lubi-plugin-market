@@ -58,6 +58,7 @@ def test_publish_failure_does_not_close_or_claim_success(tmp_path, monkeypatch):
     def run(command, **kwargs):
         if command == ["git", "push"]:
             raise RuntimeError("push failed")
+        return cli.subprocess.CompletedProcess(command, 1)
     monkeypatch.setattr(cli.subprocess, "run", run)
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: output.append("comment"))
     monkeypatch.setattr(cli.GitHub, "request", lambda *a: output.append("close"))
@@ -71,9 +72,9 @@ def test_publish_commits_then_reports_success(tmp_path, monkeypatch):
     monkeypatch.setattr(cli.GitHub, "permission", lambda *a: True)
     output = []
     monkeypatch.setattr(cli, "set_status", lambda *a: output.append("status:" + a[-1]))
-    monkeypatch.setattr(cli.subprocess, "run", lambda command, **kwargs: output.append(command[1]))
+    monkeypatch.setattr(cli.subprocess, "run", lambda command, **kwargs: output.append(command[1]) or cli.subprocess.CompletedProcess(command, 1))
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: output.append("comment"))
     monkeypatch.setattr(cli.GitHub, "request", lambda *a: output.append("close"))
     cli.publish(args)
-    assert output == ["add", "commit", "push", "status:已上架", "comment", "close"]
+    assert output == ["add", "diff", "commit", "push", "status:已上架", "comment", "close"]
     assert read_json(args.root / "catalog.json")[0]["id"] == "demo_plugin"
