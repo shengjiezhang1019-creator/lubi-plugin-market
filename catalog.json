@@ -1,6 +1,6 @@
 [
   {
-    "commit": "f91d88e195cb8ab547f1fadbb3bfce28dc83a874",
+    "commit": "9dc14e66662b09e9cee7c0c42a86621c0e0c85c6",
     "comp_types": [
       "command"
     ],
@@ -37,12 +37,12 @@
         "command",
         "hook"
       ],
-      "version": "0.1.2"
+      "version": "0.1.3"
     },
-    "published_at": "2026-10-26T07:49:23Z",
-    "release_notes": "为重新申请露比插件市场审核发布新版本。\r\n\r\n- 清单版本更新为 0.1.2，README 同步更新。\r\n- 功能代码与 v0.1.1 相同，保留 RSS XML 解析器层拒绝 DTD 和自定义实体的修复。\r\n- 不覆盖历史版本标签；本次发布不代表已获市场批准。",
+    "published_at": "2026-10-26T10:13:59Z",
+    "release_notes": "新增可配置 RSS 摘要，用于验证 v0.1.2 → v0.1.3 更新流程。\r\n\r\n- 新配置 news.include_summary 默认 true；关闭后向回复模型和来源展示仅提供标题、日期、来源及链接，不包含摘要。\r\n- 调用详情展示插件版本 0.1.3 和摘要开关状态。\r\n- 保留 count、max_age_hours、cache_minutes 的名称及默认值，更新后应保留用户设置并补充新字段。\r\n- 保留 XML 安全解析修复，无新增依赖。\r\n\r\n验证：32 项宿主集成测试通过，Ruff 通过。市场审核申请由作者另行提交。",
     "repositoryUrl": "https://github.com/zhangshengjie-xsw/lubi-game-news",
-    "sha256": "013f9f9567ddddcb6c26ebb14b5cf5768bed124a51dd50c3f54d1bd94cbe352c",
+    "sha256": "f42b08a9ba74d9868def8225730304da6da3d3b6c9d421a36a42114ed3a90913",
     "tags": [
       "游戏",
       "新闻",
