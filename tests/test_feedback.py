@@ -243,12 +243,15 @@ def test_legacy_labels_are_removed_on_next_transition():
     assert {"检查失败", "已拒绝"} <= deleted
 
 
-def test_reject_without_reason_routes_to_maintainer_decision(tmp_path, monkeypatch):
-    args, _ = context(tmp_path, monkeypatch, "/reject")
+@pytest.mark.parametrize("command", ["/reject", "/reject\n", " /reject\r\n", "/approve\n"])
+def test_reject_without_reason_routes_to_maintainer_decision(tmp_path, monkeypatch, command):
+    args, _ = context(tmp_path, monkeypatch, command)
     api = Api(permission=True)
     monkeypatch.setattr(cli, "GitHub", lambda: api)
+    if command.strip() == "/approve":
+        monkeypatch.setattr(cli, "previous_ai", lambda *a: {})
     cli.gate(args)
-    assert "mode=reject" in (tmp_path / "output").read_text()
+    assert ("mode=approve" if command.strip() == "/approve" else "mode=reject") in (tmp_path / "output").read_text()
 
 
 def test_reject_with_arguments_is_not_a_supported_command(tmp_path, monkeypatch):
