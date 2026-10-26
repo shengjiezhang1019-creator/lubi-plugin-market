@@ -60,19 +60,19 @@ def context(tmp_path, monkeypatch, comment=None):
 
 def test_status_replaces_only_owned_labels_and_creates_missing_label():
     api = Api()
-    api.labels.remove("检查失败")
-    feedback.set_status(api, "a/market", 1, "检查失败")
-    assert "检查失败" in api.labels
+    api.labels.remove("不符合提交要求")
+    feedback.set_status(api, "a/market", 1, "不符合提交要求")
+    assert "不符合提交要求" in api.labels
     deleted = [unquote(path.rsplit("/", 1)[1]) for path, method, _ in api.calls if method == "DELETE"]
     assert deleted == ["检查中"]
-    assert any(data == {"labels": ["检查失败"]} for _, method, data in api.calls if method == "POST")
+    assert any(data == {"labels": ["不符合提交要求"]} for _, method, data in api.calls if method == "POST")
 
 
 def test_label_permission_error_is_not_mistaken_for_missing_label():
     api = Api()
     api.request = lambda *a: (_ for _ in ()).throw(GitHubAPIError(403, "GET", "/labels"))
     with pytest.raises(GitHubAPIError):
-        feedback.set_status(api, "a/market", 1, "检查失败")
+        feedback.set_status(api, "a/market", 1, "不符合提交要求")
 
 
 def test_malformed_application_has_gate_failure_feedback(tmp_path, monkeypatch):
@@ -146,7 +146,7 @@ def test_setup_failure_without_artifact_gets_fallback_feedback(tmp_path, monkeyp
     assert "查看详细日志" in api.comments[0]["body"]
 
 
-@pytest.mark.parametrize("stage,status", [("publish", "已上架"), ("reject", "已拒绝")])
+@pytest.mark.parametrize("stage,status", [("publish", "已上架"), ("reject", "需修改后重新申请")])
 def test_post_push_feedback_failure_preserves_published_status(tmp_path, monkeypatch, stage, status):
     args, _ = context(tmp_path, monkeypatch)
     api = Api()
@@ -203,8 +203,8 @@ def test_reject_updates_status_only_after_push(tmp_path, monkeypatch):
     monkeypatch.setattr(cli.GitHub, "comment", lambda *a: output.append("comment"))
     monkeypatch.setattr(cli.GitHub, "request", lambda *a: output.append("close"))
     cli.reject(args)
-    assert output == ["add", "diff", "commit", "push", "已拒绝", "comment", "close"]
-    assert read_json(args.work / "publication.json")["status"] == "已拒绝"
+    assert output == ["add", "diff", "commit", "push", "需修改后重新申请", "comment", "close"]
+    assert read_json(args.work / "publication.json")["status"] == "需修改后重新申请"
 
 
 def test_report_transitions_to_pending_review_without_closing(tmp_path, monkeypatch):
@@ -221,3 +221,22 @@ def test_report_transitions_to_pending_review_without_closing(tmp_path, monkeypa
     cli.publish(args)
     assert "尚未上架" in output[0]
     assert output[1] == "待人工审核"
+
+
+@pytest.mark.parametrize("stage,error,expected", [
+    ("validate", ValueError("缺少必需文件 plugin.py"), "不符合提交要求"),
+    ("validate", ValueError("GitHub 响应超限"), "审核暂未完成"),
+    ("ai", TimeoutError(), "审核暂未完成"),
+    ("publish", RuntimeError(), "审核暂未完成"),
+    ("gate", ValueError("申请缺少 插件名称"), "不符合提交要求"),
+])
+def test_rule_errors_and_service_errors_have_distinct_status(stage, error, expected):
+    assert feedback.failure_status(stage, error) == expected
+
+
+def test_legacy_labels_are_removed_on_next_transition():
+    api = Api()
+    api.issue["labels"] += [{"name": "检查失败"}, {"name": "已拒绝"}]
+    feedback.set_status(api, "a/market", 1, "待人工审核")
+    deleted = {unquote(path.rsplit("/", 1)[1]) for path, method, _ in api.calls if method == "DELETE"}
+    assert {"检查失败", "已拒绝"} <= deleted

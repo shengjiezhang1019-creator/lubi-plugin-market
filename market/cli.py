@@ -244,9 +244,9 @@ def reject(args):
         write_json(path, {"status": "rejected", "request": req, "actor": actor, "reason": reason,
                           "issue_number": int(number)})
     push_index(args.root, f"Reject {req['plugin_name']} {req['tag']}", ["versions"], subprocess.run)
-    write_json(args.work / "publication.json", {"stage": "reject", "status": "已拒绝", "request": req})
-    set_status(api, slug, number, "已拒绝")
-    api.comment(slug, number, "已拒绝本版本：" + reason)
+    write_json(args.work / "publication.json", {"stage": "reject", "status": "需修改后重新申请", "request": req})
+    set_status(api, slug, number, "需修改后重新申请")
+    api.comment(slug, number, "需修改后重新申请。\n\n**维护者确认的修改要求：** " + reason + "\n\n请修正后发布新版本，并创建新的申请。")
     api.request(f"/repos/{slug}/issues/{number}", "PATCH", {"state": "closed"})
 
 

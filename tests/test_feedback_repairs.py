@@ -36,10 +36,10 @@ def test_reject_retry_completes_existing_result_without_overwriting(tmp_path, mo
     cli.reject(args)
     assert read_json(path) == record
     assert commands == ["add", "diff", "push"]
-    assert statuses == ["已拒绝"]
+    assert statuses == ["需修改后重新申请"]
     assert "原始拒绝原因" in comments[0]
     assert closes == [{"state": "closed"}]
-    assert read_json(args.work / "publication.json")["status"] == "已拒绝"
+    assert read_json(args.work / "publication.json")["status"] == "需修改后重新申请"
 
 
 @pytest.mark.parametrize("change", [{"status": "approved"}, {"issue_number": 99}, {"request": {}}])

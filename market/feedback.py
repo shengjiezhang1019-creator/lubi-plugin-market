@@ -15,8 +15,8 @@ from .publication import published_result
 from .common import object_digest
 
 LABELS = {
-    "检查中": "fbca04", "检查失败": "d73a4a", "待人工审核": "0075ca",
-    "已上架": "0e8a16", "已拒绝": "6f42c1",
+    "检查中": "fbca04", "不符合提交要求": "d73a4a", "审核暂未完成": "fbca04", "待人工审核": "0075ca",
+    "已上架": "0e8a16", "需修改后重新申请": "6f42c1",
 }
 STAGES = {"gate": "申请检查", "validate": "源码静态检查", "ai": "AI 审核",
           "publish": "审核报告或索引发布", "reject": "拒绝结果发布"}
@@ -57,7 +57,7 @@ def set_status(api, slug, number, status):
     issue = api.request(f"/repos/{slug}/issues/{int(number)}")
     current = {label['name'] for label in issue.get("labels", [])}
     api.request(f"/repos/{slug}/issues/{int(number)}/labels", "POST", {"labels": [status]})
-    for old in sorted((current & LABELS.keys()) - {status}):
+    for old in sorted((current & (LABELS.keys() | {"检查失败", "已拒绝"})) - {status}):
         try:
             api.request(f"/repos/{slug}/issues/{int(number)}/labels/{quote(old, safe='')}", "DELETE")
         except GitHubAPIError as exc:
@@ -79,7 +79,7 @@ def failure_detail(stage, exc):
     """只返回可信模板，异常正文中可能包含源码、服务响应或密钥，绝不直接拼接。"""
     message = str(exc)
     if isinstance(exc, ExistingVersionError):
-        status = {"approved": "已批准", "rejected": "已拒绝"}.get(exc.status, "已有处理")
+        status = {"approved": "已批准", "rejected": "需修改后重新申请"}.get(exc.status, "已有处理")
         original = f"请查看原申请 #{exc.issue_number}。" if exc.issue_number else "请维护者查看该版本的历史记录。"
         return f"该版本{status}，不会重复送交 AI 审核。", original + "如需修改源码，请发布新版本后申请，不要对原版本反复 /recheck。"
     retry = "无需修改插件。请稍后在本申请下评论 `/recheck`；仍失败时由市场维护者查看日志。"
@@ -129,9 +129,20 @@ def failure_detail(stage, exc):
     return "市场任务运行环境或 GitHub 服务异常，尚未完成检查。", retry
 
 
+def failure_status(stage, exc):
+    # 只把可确定的规则违规归于作者，运行环境和审核服务问题单独反馈。
+    if stage == "gate" and isinstance(exc, ValueError):
+        if isinstance(exc, ExistingVersionError) or str(exc).startswith(("申请缺少 ", "插件名不合法", "正式标签必须为", "仅支持公开", "仓库名称不合法")):
+            return "不符合提交要求"
+    if stage == "validate" and isinstance(exc, ValueError):
+        if str(exc).startswith(("缺少必需文件 ", "manifest ", "框架静态检查失败", "python_dependencies ", "Python 依赖", "发布源码不能", "重新上架必须提交", "必须是对应标签的公开正式 Release")):
+            return "不符合提交要求"
+    return "审核暂未完成"
+
+
 def record_failure(work, stage, exc):
     reason, next_step = failure_detail(stage, exc)
-    write_json(work / "failure.json", {"stage": stage, "reason": reason, "next_step": next_step})
+    write_json(work / "failure.json", {"stage": stage, "status": failure_status(stage, exc), "reason": reason, "next_step": next_step})
 
 
 def complete_existing(args, api, slug, number, request, event):
@@ -141,7 +152,7 @@ def complete_existing(args, api, slug, number, request, event):
     record = published_result(api, slug, request, number, event.get("repository", {}).get("default_branch"))
     if record is None:
         return False
-    status = "已上架" if record["status"] == "approved" else "已拒绝"
+    status = "已上架" if record["status"] == "approved" else "需修改后重新申请"
     marker = f"<!-- lubi-market-complete:{number}:{record['status']}:{object_digest(request)} -->"
     safe_set_status(api, slug, number, status)
     if not any(marker in comment.get("body", "") and comment.get("user", {}).get("login") == "github-actions[bot]"
@@ -170,19 +181,20 @@ def failure(args, api):
     results = json.loads(os.environ.get("MARKET_JOB_RESULTS", "{}"))
     stage = next((name for name in STAGES if results.get(name, {}).get("result") == "failure"), "unknown")
     reason, next_step = failure_detail(stage, RuntimeError())
-    status = "检查失败"
+    status = "审核暂未完成"
     conclusion = "申请保持开启，尚未确认上架成功。"
     for path in args.work.rglob("failure.json"):
         detail = read_json(path)
         if detail.get("stage") == stage:
             reason, next_step = detail["reason"], detail["next_step"]
+            status = detail.get("status", "审核暂未完成")
             break
     # push 成功后才写该证据。后续标签、评论、关闭失败不能反向宣称索引未发布。
     for path in args.work.rglob("publication.json"):
         publication = read_json(path)
         if (publication.get("stage") == stage and publication.get("request") == issue_request(issue.get("body", ""))
-                and publication.get("status") in {"已上架", "已拒绝"}):
-            status = publication["status"]
+                and publication.get("status") in {"已上架", "需修改后重新申请", "已拒绝"}):
+            status = "需修改后重新申请" if publication["status"] == "已拒绝" else publication["status"]
             reason = f"版本记录已成功推送（{status}），但后续标签、评论或关闭申请未全部完成。"
             next_step = "无需修改或重新发布插件，请维护者核对已发布记录并完成申请处理。"
             conclusion = "以已发布的版本记录为准。"
@@ -196,6 +208,6 @@ def failure(args, api):
            and comment.get("user", {}).get("type") == "Bot"
            for comment in api.pages(f"/repos/{slug}/issues/{number}/comments")):
         return
-    api.comment(slug, number, f"❌ {STAGES.get(stage, '市场任务')}未完成\n\n**原因：** {reason}\n\n"
+    api.comment(slug, number, f"**{status}** · {STAGES.get(stage, '市场任务')}\n\n**原因：** {reason}\n\n"
                 f"**下一步：** {next_step}\n\n{conclusion}\n\n"
                 f"[查看详细日志](https://github.com/{slug}/actions/runs/{run_id})\n\n{marker}")
