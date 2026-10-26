@@ -6,6 +6,7 @@ from .archive import download, unpack
 from .common import COMMIT, assert_binding, object_digest, validate_request, write_json
 from .dependencies import declaration_report
 from .github import GitHub
+from .rules.component_types import analyze_component_types
 from .validation import framework_check, manifest_check, rules_fingerprint
 
 
@@ -20,12 +21,14 @@ def validate(root, request, work, *, static_only=False, archive_data=None, commi
         raise ValueError("commit 不合法")
     source, sha256 = unpack(archive_data, work / "source")
     manifest = manifest_check(source, request)
-    checks = framework_check(source)
+    component_analysis = analyze_component_types(source)
+    checks = framework_check(source, component_analysis=component_analysis)
     if any(r["status"] == "fail" for r in checks):
         raise ValueError("框架静态检查失败：" + str(checks))
     dependencies = declaration_report(manifest)
     report = {"schema_version": 1, "status": "static_only" if static_only else "validated", "request": request,
               "commit": commit, "sha256": sha256, "manifest": manifest, "checks": checks,
+              "component_analysis": component_analysis,
               "rules_fingerprint": rules_fingerprint(), "dependency_status": "skipped" if static_only else "runtime",
               "dependency_policy": dependencies, "release_notes": (release or {}).get("body", ""),
               "published_at": (release or {}).get("published_at", ""),

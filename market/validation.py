@@ -9,7 +9,8 @@ from packaging.utils import canonicalize_name
 
 from .common import NAME, digest, object_digest, read_json
 from .rules.static_checks import _scan_python_files
-from .rules.component_types import check_component_types
+from .rules.component_types import analyze_component_types
+from .rules.static_checks import CheckResult, Status
 
 RULES_DIR = Path(__file__).resolve().parent / "rules"
 
@@ -26,7 +27,7 @@ def rules_fingerprint():
     return object_digest({path.name: digest(path.read_bytes()) for path in files})
 
 
-def framework_check(source):
+def framework_check(source, *, component_analysis=None):
     """使用市场自带 schema 和 AST 规则，不导入主程序或待审插件。"""
     manifest = read_json(Path(source) / "_manifest.json")
     schema = read_json(RULES_DIR / "manifest_schema.json")
@@ -34,7 +35,12 @@ def framework_check(source):
     if errors:
         raise ValueError("manifest 不符合市场规则: " + "; ".join(e.message for e in errors))
     results = _scan_python_files(Path(source))
-    results.extend(check_component_types(Path(source), manifest["comp_types"]))
+    analysis = component_analysis if component_analysis is not None else analyze_component_types(Path(source))
+    message = "静态识别组件类型：" + (", ".join(analysis["types"]) or "未发现")
+    if analysis["status"] == "unknown":
+        message += "；无法完全静态确认，需人工核实：" + "；".join(analysis["warnings"])
+    results.append(CheckResult("component_types", Status.WARN if analysis["status"] == "unknown" else Status.PASS,
+                               message))
     return [{"name": r.name, "status": r.status.value, "message": r.message, "location": r.location} for r in results]
 
 
