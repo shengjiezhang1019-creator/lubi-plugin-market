@@ -41,7 +41,6 @@ body:
       options:
         - label: "BARRAGE_PROCESSING — 筛选消息并决定是否进入回复规划"
         - label: "BARRAGE_STEP_WEB_SEARCH — 提供弹幕检索步骤的联网摘要"
-        - label: "BEFORE_DEEP_THINKING — 提供深度执行的事实与回答约束"
         - label: "BEFORE_REPLY_CONTEXT — 向回复 Prompt 追加参考资料"
         - label: "DOUYIN_LIVE_CONTROL — 启动、停止或查询抖音直播来源"
         - label: "KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"

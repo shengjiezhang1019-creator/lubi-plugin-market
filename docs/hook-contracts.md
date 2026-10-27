@@ -38,7 +38,7 @@ flowchart TD
 
 ### 资料怎样进入回答
 
-这些是不同的补充入口，并非必须依次调用。没有补充资料时通常按已有信息继续回答；深度思考贡献目前存在后续传递断点，图中单独标出。
+这些是不同的补充入口，并非必须依次调用。没有补充资料时通常按已有信息继续回答。
 
 ```mermaid
 flowchart TD
@@ -58,8 +58,6 @@ flowchart TD
     prompt --> reply["模型结合本轮信息生成回答"]
     reference --> reply
     original --> reply
-    need -->|进入深度执行前补充| deep["插件补充事实与回答要求<br/>BEFORE_DEEP_THINKING"]
-    deep --> gap["当前后续传递未接通<br/>尚不能送达最终回复模型"]
     need -->|PFC 规划模型需要工具| tools["模型按需选择并调用工具<br/>PFC_CONTEXT_GATHERING"]
     tools --> result["结果交回模型，帮助决定下一步"]
     result --> reuse["成功取得的文字资料<br/>还可供本轮回复参考"]
@@ -67,7 +65,6 @@ flowchart TD
     click context "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#before_reply_context" "查看回复资料说明"
     click knowledge "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#knowledge_query" "查看知识查询说明"
     click web "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_step_web_search" "查看联网摘要说明"
-    click deep "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#before_deep_thinking" "查看思考贡献说明"
     click tools "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#pfc_context_gathering" "查看模型工具说明"
 ```
 
@@ -77,7 +74,6 @@ flowchart TD
 | --- | --- | --- |
 | [BARRAGE_PROCESSING](#barrage_processing) | 消息处理 | 筛选出本轮要关注的弹幕 |
 | [BEFORE_REPLY_CONTEXT](#before_reply_context) | 上下文补充 | 向回复 Prompt 追加参考资料 |
-| [BEFORE_DEEP_THINKING](#before_deep_thinking) | 上下文补充 | 提供深度执行的事实与回答约束 |
 | [KNOWLEDGE_QUERY](#knowledge_query) | 上下文补充 | 查询知识并提供后续模型参考资料 |
 | [BARRAGE_STEP_WEB_SEARCH](#barrage_step_web_search) | 上下文补充 | 提供弹幕检索步骤的联网摘要 |
 | [MEMORY_TERM_LOOKUP](#memory_term_lookup) | 语义结果补充 | 查询术语并补充记忆语义结果 |
@@ -369,315 +365,6 @@ flowchart TD
       "type": "string",
       "description": "供回复生成参考的检索摘要，不超过 2000 字；没有可用结果时为 null",
       "nullable": true
-    }
-  }
-}
-```
-
-</details>
-
-## BEFORE_DEEP_THINKING
-
-**提供深度执行的事实与回答约束** · 上下文补充
-
-```text
-系统准备进一步思考 → 插件补充事实与回答要求
-                       ├─ 有有效内容 → 整理成供后续回答参考的文字
-                       │                 └─ 当前后续传递未接通，尚不能送达最终回复模型
-                       └─ 没有内容或处理失败 → 使用原有信息继续
-
-插件的补充不会增加思考次数，也不会决定是否进入思考。
-```
-
-| 数据 | 内容 |
-| --- | --- |
-| 返回后会发生什么 | 这些事实和要求原本应提供给后续回答作参考。但当前版本的后续传递尚未接通，不能认为模型已经收到；返回这些内容也不会强制继续思考或增加思考次数。 |
-| 无可用结果时 | 无有效贡献时沿用原始输入，不取消思考。 |
-
-### 传入字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与来源 |
-| --- | --- | --- |
-| `thinking_id` | string；必填 | 系统 为本次深度思考生成的标识，用于关联本轮贡献与诊断记录，不是消息 ID。 |
-| `reasoning_mode` | string；必填 | 系统 标记的思考路径：hfc 为 Heart Flow 路径，pfc 为 PFC 路径。只是告诉插件当前路径，不允许插件借此切换路径；Schema 接受两种值不代表每条路径都有调用。 |
-| `stream` | object；必填 | 当前对话流的最小信息，用于区分在哪个会话、哪个平台处理；不是完整聊天对象。 |
-| `stream.stream_id` | string；必填 | 当前会话的稳定标识，插件可据此区分不同聊天流。 |
-| `stream.platform` | string；必填 | 该会话所属的平台标识，由 系统 提供。 |
-| `user` | object；必填 | 本轮获准传给插件的最小用户信息，不包含完整用户档案。 |
-| `user.user_id` | string；必填；可为 null | 本轮公开的用户标识；无法提供时为 null，插件需要处理用户未知的情况。 |
-| `anchor_message` | object；必填 | 触发本轮深度思考的那条消息，用来判断本轮围绕什么问题补充资料。 |
-| `anchor_message.message_id` | string；必填 | 触发消息的稳定 ID，用于识别这条消息，不是消息正文。 |
-| `anchor_message.normalized_text` | string；必填 | 系统 规范化并限制长度后的触发消息文本，是插件理解当前问题的主要内容。 |
-| `thinking_input` | object；必填 | 本轮思考的原因、主题和上下文消息集合，由 系统 整理后提供。 |
-| `thinking_input.trigger_reason` | string；必填 | 触发原因码；当前固定为 planner_should_think，表示规划器要求进入思考。 |
-| `thinking_input.topic_center` | string；必填；可为 null | 系统 识别的当前中心话题；没有识别到时为 null，不应自行当作完整问题。 |
-| `thinking_input.context_messages` | list；必填 | 按时间升序提供的最近上下文，系统 最多保留 20 条；是只读文本快照，不是可操作的消息实例。 |
-| `thinking_input.context_messages[].message_id` | string；必填 | 该条上下文消息的稳定 ID。 |
-| `thinking_input.context_messages[].role` | string；必填 | 该条消息来自用户还是机器人，分别为 user / bot。 |
-| `thinking_input.context_messages[].normalized_text` | string；必填 | 该条上下文消息经过规范化和长度限制后的文字。 |
-| `budget` | object；必填 | 系统 已经确定的本轮执行预算，只用于插件了解限制，不能通过结果修改。 |
-| `budget.max_steps` | integer；必填 | 本轮最多允许的子步骤数，不是要求插件一定生成这么多步骤。 |
-
-### 返回字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与约束 | 返回后会发生什么 |
-| --- | --- | --- | --- |
-| `facts` | list；必填 | 插件提供的结构化事实列表；最多 8 条，key 不得重复，超限或重复会导致整份结果被拒绝。 | 把有内容的事实整理成“已知事实”，供后续回答参考；当前后续传递尚未接通。 |
-| `facts[].key` | string；必填 | 事实的稳定名称，例如活动截止时间；最长 64 字符，同一列表内唯一。 | 让模型知道这条事实说的是哪件事。 |
-| `facts[].value` | string；必填 | 事实的内容，必须是字符串；数字、日期或结构需要插件自己转成清楚的文字。 | 提供这件事的具体内容，例如活动什么时候结束。 |
-| `facts[].source` | string；必填 | 这条事实的来源说明，例如公告链接或资料名称。 | 让模型知道这条事实来自哪里。 |
-| `constraints` | list；必填 | 希望模型回答时遵循的文字要求；最多 4 条，code 不得重复。 | 整理成“回答约束”，告诉模型回答时应注意什么；当前后续传递尚未接通。 |
-| `constraints[].code` | string；必填 | 约束的稳定标识，最长 64 字符，同一列表内唯一。 | 区分不同要求、检查是否重复；不提供给模型阅读。 |
-| `constraints[].instruction` | string；必填 | 具体的一句话要求，例如“区分官方已确认内容与推测”；最长 120 字符。 | 告诉模型回答时应遵循的具体要求；它不是强制执行的程序规则。 |
-| `source_id` | string；必填 | 本次贡献整体的来源标识，由插件提供，用于说明是谁贡献的。 | 记录这份补充来自谁，方便排查和追溯；不作为回答资料。 |
-| `reason_code` | string；必填 | 说明本次为什么有贡献或无贡献的稳定原因码；没有资料时也必须提供。 | 记录本次为何提供或没有提供补充，方便排查；不决定是否继续思考。 |
-
-### 完整数据示例
-
-插件收到的输入（演示值，reasoning_mode 仅展示当前已核对的 pfc 消费路径）：
-
-```json
-{
-  "thinking_id": "think_example_001",
-  "reasoning_mode": "pfc",
-  "stream": {"stream_id": "stream_example", "platform": "qq"},
-  "user": {"user_id": "user_example"},
-  "anchor_message": {"message_id": "message_example", "normalized_text": "活动什么时候结束？"},
-  "thinking_input": {
-    "trigger_reason": "planner_should_think",
-    "topic_center": "活动截止时间",
-    "context_messages": [
-      {"message_id": "message_example", "role": "user", "normalized_text": "活动什么时候结束？"}
-    ]
-  },
-  "budget": {"max_steps": 3}
-}
-```
-
-插件成功返回的业务 data：
-
-```json
-{
-  "facts": [{"key": "活动截止时间", "value": "示例公告注明：10 月 31 日 23:59", "source": "示例活动公告"}],
-  "constraints": [{"code": "state_source", "instruction": "说明时间来自活动公告，不推测延期。"}],
-  "source_id": "example_plugin",
-  "reason_code": "matched_announcement"
-}
-```
-
-系统 将其格式化为：
-
-```text
-已知事实：
-- 活动截止时间：示例公告注明：10 月 31 日 23:59（来源：示例活动公告）
-回答约束：
-- 说明时间来自活动公告，不推测延期。
-```
-
-这段文本写入 `thinking_extra_context["extra_info"]`；`source_id` 和 `reason_code` 留作归因与诊断。当前执行器后续合并存在断点，因此以上说明的是已构造并传递的内容，不代表最终模型已收到它。`facts=[]` 且 `constraints=[]` 时为合法的无贡献结果，但仍须给出 `source_id` 与 `reason_code`。
-
-<details>
-<summary>展开完整输入输出契约、约束与绑定数量</summary>
-
-深度思考执行前为已冻结的思考输入补充结构化事实与规划约束；不选择回合路径、不生成计划或回复、不修改预算。失效或结果非法时沿用原始思考输入
-
-允许的组件类型：command, tool。
-
-绑定数量：最少 0，最多 1。
-
-输入契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "thinking_id": {
-      "type": "string",
-      "description": "本次深度思考的稳定 ID"
-    },
-    "reasoning_mode": {
-      "type": "string",
-      "description": "本轮走哪条深度路径",
-      "constraints": {
-        "enum": [
-          "hfc",
-          "pfc"
-        ]
-      }
-    },
-    "stream": {
-      "type": "object",
-      "description": "最小 stream 快照",
-      "constraints": {
-        "properties": {
-          "stream_id": {
-            "type": "string",
-            "description": "当前 stream 稳定 ID"
-          },
-          "platform": {
-            "type": "string",
-            "description": "已注册平台"
-          }
-        }
-      }
-    },
-    "user": {
-      "type": "object",
-      "description": "Core 裁剪的最小用户快照",
-      "constraints": {
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "description": "获准公开的用户 ID；缺失时为 null",
-            "nullable": true
-          }
-        }
-      }
-    },
-    "anchor_message": {
-      "type": "object",
-      "description": "触发本轮深度思考的锚定输入",
-      "constraints": {
-        "properties": {
-          "message_id": {
-            "type": "string",
-            "description": "稳定消息 ID"
-          },
-          "normalized_text": {
-            "type": "string",
-            "description": "受限长度的规范化文本"
-          }
-        }
-      }
-    },
-    "thinking_input": {
-      "type": "object",
-      "description": "Core 构造的结构化思考输入",
-      "constraints": {
-        "properties": {
-          "trigger_reason": {
-            "type": "string",
-            "description": "稳定触发原因码",
-            "constraints": {
-              "enum": [
-                "planner_should_think"
-              ]
-            }
-          },
-          "topic_center": {
-            "type": "string",
-            "description": "当前主题中心；Core 未识别时为 null",
-            "nullable": true
-          },
-          "context_messages": {
-            "type": "list",
-            "description": "按时间升序的受限只读上下文",
-            "constraints": {
-              "items": {
-                "type": "object",
-                "constraints": {
-                  "properties": {
-                    "message_id": {
-                      "type": "string",
-                      "description": "稳定消息 ID"
-                    },
-                    "role": {
-                      "type": "string",
-                      "description": "该条上下文的发言角色",
-                      "constraints": {
-                        "enum": [
-                          "user",
-                          "bot"
-                        ]
-                      }
-                    },
-                    "normalized_text": {
-                      "type": "string",
-                      "description": "受限长度的规范化文本"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "budget": {
-      "type": "object",
-      "description": "Core 计算的本轮硬预算；Tool 不得请求修改",
-      "constraints": {
-        "properties": {
-          "max_steps": {
-            "type": "integer",
-            "description": "本轮允许的最大子步骤数"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-返回 data 契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "facts": {
-      "type": "list",
-      "description": "结构化事实，最多 8 条；超出或重复 key 会被框架判为非法结果并整份丢弃",
-      "constraints": {
-        "items": {
-          "type": "object",
-          "constraints": {
-            "properties": {
-              "key": {
-                "type": "string",
-                "description": "稳定事实键，最长 64 字符"
-              },
-              "value": {
-                "type": "string",
-                "description": "事实值的文本表示"
-              },
-              "source": {
-                "type": "string",
-                "description": "事实来源标识"
-              }
-            }
-          }
-        }
-      }
-    },
-    "constraints": {
-      "type": "list",
-      "description": "规划约束，最多 4 条；超出或重复 code 会被框架判为非法结果并整份丢弃",
-      "constraints": {
-        "items": {
-          "type": "object",
-          "constraints": {
-            "properties": {
-              "code": {
-                "type": "string",
-                "description": "稳定约束码，最长 64 字符"
-              },
-              "instruction": {
-                "type": "string",
-                "description": "面向规划的一句话约束，最长 120 字符"
-              }
-            }
-          }
-        }
-      }
-    },
-    "source_id": {
-      "type": "string",
-      "description": "贡献来源标识，供审计归因"
-    },
-    "reason_code": {
-      "type": "string",
-      "description": "稳定原因码；无贡献时也必须给出"
     }
   }
 }
@@ -1182,4 +869,4 @@ flowchart TD
 
 ## 维护说明
 
-新增或修改宿主公开 Hook 时，同步更新 `hook-contracts.json`、本页的数据去向和 Issue 表单选项。不要只增加下拉项。契约更新不代表目标宿主已经升级；上述执行器断点也不由文档更新修复。
+新增或修改宿主公开 Hook 时，同步更新 `hook-contracts.json`、本页的数据去向和 Issue 表单选项。不要只增加下拉项。契约更新不代表目标宿主已经升级。
