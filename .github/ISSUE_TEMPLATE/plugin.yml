@@ -29,21 +29,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        可从下方展开选择插件使用的 Hook（支持多选）。[查看完整 Hook 契约与示例](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md)。
-        **勾选仅供审核说明，不会创建或修改绑定；实际接入以插件代码和宿主加载校验为准。**
-        清单是宿主公开契约快照，目标宿主是否支持请以安装端为准。
+        请选择插件代码中实际使用的 Hook，可多选。
+        [查看各 Hook 的作用、输入输出和处理流程](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md)。
 
-        **先按需要选择接入类型：**
-
-        | 类型 | 插件能做什么 | 典型 Hook |
-        | --- | --- | --- |
-        | 消息处理 | 转换消息、筛选进入规划的消息 | MESSAGE_INGRESS、BARRAGE_PROCESSING |
-        | 上下文补充 | 返回资料，由宿主放入后续上下文 | BEFORE_REPLY_CONTEXT、KNOWLEDGE_QUERY |
-        | 回复与语义处理 | 改写候选正文、事件描述，或补充语义结果 | AFTER_*、MEMORY_TERM_LOOKUP |
-        | 状态控制 | 管理直播来源与场次 | DOUYIN_LIVE_CONTROL |
-        | 模型工具 | 由模型选择工具，结果回填模型 | PFC_CONTEXT_GATHERING |
-
-        不确定字段怎么写？请查看上方完整契约中的「传入 → 返回 → 下游去向」及示例。
+        此处选择仅用于审核说明，不会自动建立绑定。
   - type: dropdown
     id: hooks
     attributes:
