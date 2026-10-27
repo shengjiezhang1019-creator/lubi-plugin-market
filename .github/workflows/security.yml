@@ -1,0 +1,53 @@
+name: 安全封禁或解除插件版本封禁
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: ban 安全封禁 / unban 解除封禁 / initialize 首次启用通知
+        type: choice
+        required: true
+        options: [ban, unban, initialize]
+      plugin_name:
+        description: 封禁时填写插件名称
+        type: string
+      version:
+        description: 封禁时填写版本号（如 1.2.0，不带 v）
+        type: string
+      record_id:
+        description: 解除封禁时填写原封禁记录编号
+        type: string
+      reason:
+        description: 封禁或解除原因（必填）
+        type: string
+        required: true
+      advice:
+        description: 用户处理建议（例如重启并更换 API Key）
+        type: string
+permissions:
+  contents: read
+jobs:
+  security:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: market-index-write
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - name: 检查权限、签名并发布安全通知
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MARKET_SECURITY_PRIVATE_KEY: ${{ secrets.MARKET_SECURITY_PRIVATE_KEY }}
+          MARKET_SECURITY_KEY_ID: ${{ vars.MARKET_SECURITY_KEY_ID }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python -m market.security

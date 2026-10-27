@@ -74,6 +74,9 @@ def manifest_check(source, request):
         if not isinstance(item["version"], str) or not item["version"].strip():
             raise ValueError("Python 依赖需要声明实际测试的版本范围")
         SpecifierSet(item["version"])
-    if (source / "config.toml").exists() or (source / ".env").exists():
-        raise ValueError("发布源码不能包含真实 config.toml 或 .env，请使用配置模型或模板")
+    if (source / ".env").exists():
+        raise ValueError("发布源码不能包含 .env 或真实密钥")
+    if (source / "config.toml").exists():
+        import tomllib
+        tomllib.loads((source / "config.toml").read_text(encoding="utf-8"))
     return manifest
