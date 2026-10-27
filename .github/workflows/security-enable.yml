@@ -1,0 +1,31 @@
+name: 启用安全通知
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  enable:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: market-index-write
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - name: 自动检查配置并发布通知
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MARKET_SECURITY_PRIVATE_KEY: ${{ secrets.MARKET_SECURITY_PRIVATE_KEY }}
+          MARKET_SECURITY_KEY_ID: ${{ vars.MARKET_SECURITY_KEY_ID }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python -m market.security_enable
