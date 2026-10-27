@@ -152,7 +152,8 @@ request.json：
 
 安全封禁独立于普通下架，停止受影响提交的分发，客户端重启后隔离插件。
 密钥配置、封禁、解除及恢复步骤见 [插件市场维护指南](docs/PLUGIN_SECURITY.md)。
-首次启用必须配置签名密钥与客户端可信公钥，不能只部署工作流。
+新市场首次启用只需在电脑的市场目录运行 `python -m market.security_setup`，使用已登录的 GitHub 管理员身份自动完成配置。
+以后可在 Actions 中运行“启用安全通知”检查配置，无需重新生成钥匙。客户端安装包所需的公钥文件也会自动准备好；主程序发布另行处理。
 
 2026-10-27 上线记录：[发布 PR #16](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/pull/16)、
 [线上 CI](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/40451870389)、
