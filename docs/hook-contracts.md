@@ -25,7 +25,7 @@ Issue 表单用于声明插件实际使用的 Hook，不会建立绑定。普通
 
 ## 阅读方式
 
-每个节点先看数据流、主要字段和实际去向，再展开完整 Schema。主要字段是阅读摘要，开发时以完整契约的字段、类型及组合约束为准。示例均为演示值，不代表真实调用。
+每个节点先看数据流、主要字段和实际去向，再展开完整 Schema。字段表展开公开 Schema 的顶层和嵌套字段，并解释结果用途；开放对象的操作专属结构仍须对照完整契约与宿主验收。表中 list 表示数组、object 表示对象，`[]` 表示数组中的每一项，点号表示对象子字段。“必填”指该对象存在时需要提供该字段；可为 null 与可省略是两回事。示例均为演示值，不代表真实调用。
 
 ## AFTER_DANMAKU_REPLY_GENERATION
 
@@ -37,8 +37,6 @@ Issue 表单用于声明插件实际使用的 Hook，不会建立绑定。普通
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | candidate.text、candidate.segments、generation_id、turn_id，以及流、目标与模型信息 |
-| 返回主要字段 | action、replacement_text、annotations |
 | Core 如何采用 | replacement_text 经宿主处理后更新 llm_response.content / reply_set，并清空旧 tts_segment_plans；annotations 不进入正文。 |
 | 无可用结果时 | 无绑定、失败或非法结果时沿用原候选。 |
 
@@ -59,6 +57,41 @@ Issue 表单用于声明插件实际使用的 Hook，不会建立绑定。普通
 | `llm_response.tts_segment_plans` | `None`，避免使用旧正文语音计划 |
 
 Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `generation_id` | string；必填 | 本次投机生成的稳定 ID |
+| `turn_id` | string；必填 | 当前 Heart Flow 回合 ID |
+| `model_task` | object；必填 | 最小模型任务快照 |
+| `model_task.task_id` | string；必填 | 稳定模型任务 ID |
+| `model_task.model_id` | string；必填 | 实际模型标识 |
+| `stream` | object；必填 | 最小对话流快照 |
+| `stream.stream_id` | string；必填 | 稳定对话流 ID |
+| `stream.platform` | string；必填 | 平台标识 |
+| `target` | object；必填 | Core 确认的候选目标 |
+| `target.kind` | string；必填 | Core 确认的目标种类 |
+| `target.target_id` | string；必填 | Core 确认的目标 ID |
+| `candidate` | object；必填 | 完整、不可见的投机回复候选 |
+| `candidate.text` | string；必填 | 完整、尚未可见的候选正文 |
+| `candidate.segments` | list；必填 | 发送顺序冻结的候选文本段投影 |
+| `candidate.segments[].type` | string；必填 | 段类型 |
+| `candidate.segments[].text` | string；必填 | 仅开放给审核的文本投影 |
+| `candidate.model_id` | string；必填 | 实际生成模型 ID |
+| `candidate.input_tokens` | integer；必填 | 输入 token 数；未知时为 0 |
+| `candidate.output_tokens` | integer；必填 | 输出 token 数；未知时为 0 |
+| `candidate.elapsed_ms` | integer；必填 | 完整候选生成耗时 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `action` | string；必填 | 保留原候选或用受限文本替换它 允许值：keep / replace。 | Core 根据 keep / replace 分支保留或替换当前候选；不直接执行发送。 |
+| `replacement_text` | string；必填；可为 null | replace 时的非空完整替代正文，最多 256 字符；keep 时必须为 null | replace 时经 Core 验收后采用；keep 时必须为 null。具体写入位置见本节点“Core 如何采用”。 |
+| `annotations` | list；必填 | 只读审计标注 | 保存在结果对象作为审核标注；不拼入回复正文。 |
+| `annotations[].code` | string；必填 | 稳定审核标注代码 | 记录标注类别，不参与正文替换判断。 |
+| `annotations[].message` | string；必填 | 面向审计的简短说明 | 记录审核说明，不发送给观众。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -242,10 +275,30 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | candidate_text、gift、actor、signal_id、room_stream_id |
-| 返回主要字段 | action、replacement_text |
 | Core 如何采用 | 最终文字写入 description，传给 apply_direct_room_event()；不在此处直接发送感谢消息。 |
 | 无可用结果时 | 无绑定、失败或非法结果时沿用模板文案。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `signal_id` | string；必填 | 本次直调的稳定审计 ID |
+| `room_stream_id` | string；必填 | 所属直播间的稳定流 ID |
+| `gift` | object；必填 | 本次触发直调的礼物快照 |
+| `gift.gift_name` | string；必填 | 礼物名 |
+| `gift.combo_count` | integer；必填 | 连击数，至少为 1 |
+| `gift.diamond_value` | number；必填 | 本次礼物的钻石总价值 |
+| `actor` | object；必填 | 裁剪后的最小送礼人快照 |
+| `actor.nickname` | string；必填 | 展示昵称；缺失时为「观众」 |
+| `actor.badge_label` | string；必填 | 灯牌标签；无灯牌时为空串 |
+| `candidate_text` | string；必填 | Core 模板生成的待改写文案正文 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `action` | string；必填 | 保留模板原文或用受限文本替换它 允许值：keep / replace。 | Core 根据 keep / replace 分支保留或替换当前候选；不直接执行发送。 |
+| `replacement_text` | string；必填；可为 null | replace 时的完整替代正文，不超过 80 字；keep 时必须为 null | replace 时经 Core 验收后采用；keep 时必须为 null。具体写入位置见本节点“Core 如何采用”。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -351,10 +404,43 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | candidate、generation_id、turn_id，以及流、目标与模型信息 |
-| 返回主要字段 | action、replacement_text、annotations |
 | Core 如何采用 | 替换待发送缓冲区与 llm_response 的正文、文本段；替换成功后清空旧 TTS 计划。缓冲区替换失败则回退原候选。 |
 | 无可用结果时 | 无绑定、失败或非法结果时沿用原候选。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `generation_id` | string；必填 | 本次投机生成的稳定 ID |
+| `turn_id` | string；必填 | 当前 Heart Flow 回合 ID |
+| `model_task` | object；必填 | 最小模型任务快照 |
+| `model_task.task_id` | string；必填 | 稳定模型任务 ID |
+| `model_task.model_id` | string；必填 | 实际模型标识 |
+| `stream` | object；必填 | 最小对话流快照 |
+| `stream.stream_id` | string；必填 | 稳定对话流 ID |
+| `stream.platform` | string；必填 | 平台标识 |
+| `target` | object；必填 | Core 确认的候选目标 |
+| `target.kind` | string；必填 | Core 确认的目标种类 |
+| `target.target_id` | string；必填 | Core 确认的目标 ID |
+| `candidate` | object；必填 | 完整、不可见的投机回复候选 |
+| `candidate.text` | string；必填 | 完整、尚未可见的候选正文 |
+| `candidate.segments` | list；必填 | 发送顺序冻结的候选文本段投影 |
+| `candidate.segments[].type` | string；必填 | 段类型 |
+| `candidate.segments[].text` | string；必填 | 仅开放给审核的文本投影 |
+| `candidate.model_id` | string；必填 | 实际生成模型 ID |
+| `candidate.input_tokens` | integer；必填 | 输入 token 数；未知时为 0 |
+| `candidate.output_tokens` | integer；必填 | 输出 token 数；未知时为 0 |
+| `candidate.elapsed_ms` | integer；必填 | 完整候选生成耗时 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `action` | string；必填 | 保留原候选或用受限文本替换它 允许值：keep / replace。 | Core 根据 keep / replace 分支保留或替换当前候选；不直接执行发送。 |
+| `replacement_text` | string；必填；可为 null | replace 时的非空完整替代正文，最多 256 字符；keep 时必须为 null | replace 时经 Core 验收后采用；keep 时必须为 null。具体写入位置见本节点“Core 如何采用”。 |
+| `annotations` | list；必填 | 只读审计标注 | 保存在结果对象作为审核标注；不拼入回复正文。 |
+| `annotations[].code` | string；必填 | 稳定审核标注代码 | 记录标注类别，不参与正文替换判断。 |
+| `annotations[].message` | string；必填 | 面向审计的简短说明 | 记录审核说明，不发送给观众。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -538,10 +624,40 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | stream_id、session_id、last_processed_time、recently_replied_topics |
-| 返回主要字段 | result（可为 null），内含 batch、should_reply、selected_message_ids、话题与时间窗口等 |
 | Core 如何采用 | 还原为 DanmakuFilterResult；选中消息构造 Planner 上下文，时间窗口推进游标，话题供氛围与去重使用。通过筛选仍可能排队或超时，不等于已经发送。 |
 | 无可用结果时 | 无可用结果或失败时，本轮不进入 Planner。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `stream_id` | string；必填 | 当前聊天流 ID |
+| `session_id` | string；必填 | 当前直播场次 ID；空值表示没有可处理场次 |
+| `last_processed_time` | number；必填 | 主流程已处理时间，作为插件游标下限 |
+| `recently_replied_topics` | list；必填 | 近期已经回复的话题，用于内部筛选去重 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `result` | object；必填；可为 null | 完整处理结果；探测、等待或失效时为 null | null 表示本轮没有可继续的候选；非 null 时宿主还原为 DanmakuFilterResult 后继续检查。 |
+| `result.batch` | list；必填 | 本轮原始数据库消息的纯 JSON 快照，供主流程还原回复上下文 | 宿主还原为 DatabaseMessages 列表，配合选中 ID 构造后续消息上下文。 |
+| `result.candidates_text_preview` | string；必填 | 筛选候选的文本预览 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.llm_model` | string；必填 | 筛选模型名称 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.llm_raw_output` | string；必填 | 内部筛选输出的展示记录 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.min_for_llm` | integer；必填 | 本轮触发模型筛选的目标条数 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.rate_per_min` | number；必填 | 弹幕速率，单位条每分钟 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.rate_sample_minutes` | number；必填 | 速率采样时长，单位分钟 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.reasoning` | string；必填 | 处理决定的展示说明 | 用于展示和日志解释筛选决定，不作为发送正文。 |
+| `result.selected_message_ids` | list；必填 | 选中的稳定消息 ID | 标识要关注的消息；宿主从批次中构造 Planner 上下文。 |
+| `result.selected_topic` | string；必填；可为 null | 选中消息对应的话题 | 更新近期话题记录，供后续去重，并用于排队诊断。 |
+| `result.selection_committed_at` | number；必填；可为 null | 筛选决定完成时间 | 用于判断排队结果是否已经过期。 |
+| `result.should_reply` | boolean；必填 | 是否建议进入后续回复规划 | 参与宿主进入 Planner 的闸门判断；true 不保证发送，还需有效选中消息和后续流程通过。 |
+| `result.similarity_threshold_used` | number；必填 | 本轮使用的话题相似度阈值 | 供筛选诊断和界面展示；该字段本身不作为回复正文或 Planner 指令。 |
+| `result.skip_reason` | string；必填 | 未进入回复的稳定原因代码 | 说明不进入回复的原因；积累等待等原因还影响是否推进处理游标。 |
+| `result.time_window_end` | number；必填 | 本轮处理窗口终点 | 宿主据此推进已处理游标，影响下轮处理窗口。 |
+| `result.time_window_start` | number；必填 | 本轮处理窗口起点 | 描述本批消息处理区间，随筛选结果传给宿主。 |
+| `result.topic_center` | string；必填；可为 null | 本批弹幕的中心话题 | 记录为弹幕氛围，供回复阶段使用。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -699,10 +815,23 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | step_id、stream_id、path、query |
-| 返回主要字段 | content |
 | Core 如何采用 | content → 检索步骤结果 → ledger_web_search → extra_info → reply_target_block。这里不直接填入模板的 web_search_result。 |
 | 无可用结果时 | 失败、空结果或超长时使用无联网结果提示，继续管线。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `step_id` | string；必填 | 本次子步骤的稳定 ID，同时作为审计 ID |
+| `stream_id` | string；必填 | 所属聊天流的稳定 ID |
+| `path` | string；必填 | 子步骤来自哪条弹幕脑管线 允许值：filter / topic。 |
+| `query` | string；必填 | 规划器给出的检索短句；Core 保证非空 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `content` | string；必填；可为 null | 供回复生成参考的检索摘要，不超过 2000 字；没有可用结果时为 null | 取出非空文本，交给调用方组装后续模型上下文；不是直接发出的回复。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -772,10 +901,90 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | thinking_id、reasoning_mode、stream、user、anchor_message、thinking_input、budget |
-| 返回主要字段 | facts、constraints、source_id、reason_code |
 | Core 如何采用 | facts / constraints 转成文本，写入 thinking_extra_context["extra_info"] 并传入 PFC 执行器。当前核对的宿主执行器未将传入 extra_info 合入最终回复资料，不能视为已注入 Prompt。 |
 | 无可用结果时 | 无有效贡献时沿用原始输入，不取消思考。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `thinking_id` | string；必填 | Core 为本次深度思考生成的标识，用于关联本轮贡献与诊断记录，不是消息 ID。 |
+| `reasoning_mode` | string；必填 | Core 标记的思考路径：hfc 为 Heart Flow 路径，pfc 为 PFC 路径。只是告诉插件当前路径，不允许插件借此切换路径；Schema 接受两种值不代表每条路径都有调用。 |
+| `stream` | object；必填 | 当前对话流的最小信息，用于区分在哪个会话、哪个平台处理；不是完整聊天对象。 |
+| `stream.stream_id` | string；必填 | 当前会话的稳定标识，插件可据此区分不同聊天流。 |
+| `stream.platform` | string；必填 | 该会话所属的平台标识，由 Core 提供。 |
+| `user` | object；必填 | 本轮获准传给插件的最小用户信息，不包含完整用户档案。 |
+| `user.user_id` | string；必填；可为 null | 本轮公开的用户标识；无法提供时为 null，插件需要处理用户未知的情况。 |
+| `anchor_message` | object；必填 | 触发本轮深度思考的那条消息，用来判断本轮围绕什么问题补充资料。 |
+| `anchor_message.message_id` | string；必填 | 触发消息的稳定 ID，用于识别这条消息，不是消息正文。 |
+| `anchor_message.normalized_text` | string；必填 | Core 规范化并限制长度后的触发消息文本，是插件理解当前问题的主要内容。 |
+| `thinking_input` | object；必填 | 本轮思考的原因、主题和上下文消息集合，由 Core 整理后提供。 |
+| `thinking_input.trigger_reason` | string；必填 | 触发原因码；当前固定为 planner_should_think，表示规划器要求进入思考。 |
+| `thinking_input.topic_center` | string；必填；可为 null | Core 识别的当前中心话题；没有识别到时为 null，不应自行当作完整问题。 |
+| `thinking_input.context_messages` | list；必填 | 按时间升序提供的最近上下文，Core 最多保留 20 条；是只读文本快照，不是可操作的消息实例。 |
+| `thinking_input.context_messages[].message_id` | string；必填 | 该条上下文消息的稳定 ID。 |
+| `thinking_input.context_messages[].role` | string；必填 | 该条消息来自用户还是机器人，分别为 user / bot。 |
+| `thinking_input.context_messages[].normalized_text` | string；必填 | 该条上下文消息经过规范化和长度限制后的文字。 |
+| `budget` | object；必填 | Core 已经确定的本轮执行预算，只用于插件了解限制，不能通过结果修改。 |
+| `budget.max_steps` | integer；必填 | 本轮最多允许的子步骤数，不是要求插件一定生成这么多步骤。 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `facts` | list；必填 | 插件提供的结构化事实列表；最多 8 条，key 不得重复，超限或重复会导致整份结果被拒绝。 | 非空时参与 adopted 判定；每项被格式化为“key：value（来源：source）”。 |
+| `facts[].key` | string；必填 | 事实的稳定名称，例如活动截止时间；最长 64 字符，同一列表内唯一。 | 作为“已知事实”中每条事实的名称。 |
+| `facts[].value` | string；必填 | 事实的内容，必须是字符串；数字、日期或结构需要插件自己转成清楚的文字。 | 作为对应事实的正文，不会直接更新 Core 的业务状态。 |
+| `facts[].source` | string；必填 | 这条事实的来源说明，例如公告链接或资料名称。 | 放在该条事实后面的“来源”括注里。 |
+| `constraints` | list；必填 | 希望模型回答时遵循的文字要求；最多 4 条，code 不得重复。 | 非空时参与 adopted 判定；渲染为“回答约束”，不是代码级硬规则。 |
+| `constraints[].code` | string；必填 | 约束的稳定标识，最长 64 字符，同一列表内唯一。 | 用于识别和去重；当前 as_context_block() 不把 code 写进给模型的文字。 |
+| `constraints[].instruction` | string；必填 | 具体的一句话要求，例如“区分官方已确认内容与推测”；最长 120 字符。 | 逐条写入“回答约束”文本，不会修改步数预算。 |
+| `source_id` | string；必填 | 本次贡献整体的来源标识，由插件提供，用于说明是谁贡献的。 | 保存在贡献结果中供日志和审计使用；不作为事实正文注入。 |
+| `reason_code` | string；必填 | 说明本次为什么有贡献或无贡献的稳定原因码；没有资料时也必须提供。 | 保存在贡献结果和日志中；不直接决定是否继续思考。 |
+
+### 完整数据示例
+
+插件收到的输入（演示值，reasoning_mode 仅展示当前已核对的 pfc 消费路径）：
+
+```json
+{
+  "thinking_id": "think_example_001",
+  "reasoning_mode": "pfc",
+  "stream": {"stream_id": "stream_example", "platform": "qq"},
+  "user": {"user_id": "user_example"},
+  "anchor_message": {"message_id": "message_example", "normalized_text": "活动什么时候结束？"},
+  "thinking_input": {
+    "trigger_reason": "planner_should_think",
+    "topic_center": "活动截止时间",
+    "context_messages": [
+      {"message_id": "message_example", "role": "user", "normalized_text": "活动什么时候结束？"}
+    ]
+  },
+  "budget": {"max_steps": 3}
+}
+```
+
+插件成功返回的业务 data：
+
+```json
+{
+  "facts": [{"key": "活动截止时间", "value": "示例公告注明：10 月 31 日 23:59", "source": "示例活动公告"}],
+  "constraints": [{"code": "state_source", "instruction": "说明时间来自活动公告，不推测延期。"}],
+  "source_id": "example_plugin",
+  "reason_code": "matched_announcement"
+}
+```
+
+Core 将其格式化为：
+
+```text
+已知事实：
+- 活动截止时间：示例公告注明：10 月 31 日 23:59（来源：示例活动公告）
+回答约束：
+- 说明时间来自活动公告，不推测延期。
+```
+
+这段文本写入 `thinking_extra_context["extra_info"]`；`source_id` 和 `reason_code` 留作归因与诊断。当前执行器后续合并存在断点，因此以上说明的是已构造并传递的内容，不代表最终模型已收到它。`facts=[]` 且 `constraints=[]` 时为合法的无贡献结果，但仍须给出 `source_id` 与 `reason_code`。
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -996,8 +1205,6 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | text、stream_id |
-| 返回主要字段 | context |
 | Core 如何采用 | context → plugin_context → reply_target_block → 回复 Prompt。Core 添加参考资料边界，不由插件选择插入位置。 |
 | 无可用结果时 | 无绑定、失败或超长时不补资料，继续回复。 |
 
@@ -1029,6 +1236,19 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 {reply_style}
 ```
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `text` | string；必填 | 当前回复对象的消息正文，不含历史记录 |
+| `stream_id` | string；必填 | 宿主确认的当前对话流 ID |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `context` | string；必填 | 只读参考资料，最多 6000 字符；不提供资料时为空串 | 去除首尾空白后，追加到 reply_target_block 的插件参考资料区域。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -1083,10 +1303,21 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | operation、params（按 start / stop / status 区分） |
-| 返回主要字段 | result（结构随操作变化） |
 | Core 如何采用 | start 结果维护来源 PID 与场次；stop 的 rooms 用于房间和场次清理；status 的 closed_rooms 也会驱动关闭来源清理。 |
 | 无可用结果时 | 无绑定时 status 返回不可用、stop 返回空成功、start 报不可用。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `operation` | string；必填 | 管理操作 允许值：start / stop / status。 |
+| `params` | object；必填 | 按操作分别校验的参数 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `result` | object；必填 | 纯 JSON 管理结果 | 按 start / stop / status 分支消费；操作专属结构与状态清理见完整契约及本节数据去向。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -1156,10 +1387,23 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | query、top_k |
-| 返回主要字段 | query、content（其他字段以完整契约为准） |
 | Core 如何采用 | Core 校验查询对应关系并取 content。普通群聊填入 memory_retrieval；弹幕知识步骤作为工具材料合入 extra_info；记忆检索调用方使用返回文本。 |
 | 无可用结果时 | 无绑定、失败或未命中时不提供知识；提示由调用方决定。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `query` | string；必填 | 调用方已经确定的非空查询词 |
+| `top_k` | integer；必填 | 最多返回的候选数，由宿主归一化到 1 至 20 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `source` | string；必填 | 知识提供方的展示标识 | 标识检索来源；当前普通查询 Consumer 不把它写进知识正文。 |
+| `query` | string；必填 | 回显本次查询词，宿主检查与输入一致 | 必须与本次业务查询对应，否则整份知识结果不采用。 |
+| `content` | string；必填 | 供后续回复参考的知识正文；未命中为空字符串 | 作为知识文本返回；由群聊、弹幕步骤或记忆检索调用方包装使用。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -1222,10 +1466,24 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | lookup_id、stream_id、term、needed_context、context |
-| 返回主要字段 | explanation |
 | Core 如何采用 | 解释追加进 semantic_result["reaction"]；更新 enhancement_applied、enhanced_terms_count，原 intent_type 为 ambiguous 时改为 clarified，继续后续记忆处理。 |
 | 无可用结果时 | 无解释时不追加资料，继续使用已有语义结果。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `lookup_id` | string；必填 | 本次查询的稳定审计 ID |
+| `stream_id` | string；必填 | 被总结的聊天流稳定 ID |
+| `term` | string；必填 | 模型表示看不懂的术语、梗或缩写；Core 保证非空 |
+| `needed_context` | string；必填 | 模型自述需要的背景知识；没有时为空串 |
+| `context` | string；必填 | 术语出现的原文片段，最多 1000 字 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `explanation` | string；必填；可为 null | 术语解释，不超过 1000 字；查不到时为 null | 非空解释由增强器追加到语义结果 reaction，并更新增强状态。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
@@ -1293,10 +1551,24 @@ Hook 本身不执行发送；更新后的候选仍须经过后续发送流程。
 
 | 数据 | 内容 |
 | --- | --- |
-| 传入主要字段 | source_id、platform、external_message_id、payload |
-| 返回主要字段 | decision、message |
 | Core 如何采用 | accepted 时验收并返回标准消息，入口接成 converted 交给 consume_live_event() 分流；rejected 时返回 None，停止该条处理。 |
 | 无可用结果时 | 组件缺失或失败时报接入错误；正常拒绝不进入后续处理。 |
+
+### 传入字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与来源 |
+| --- | --- | --- |
+| `source_id` | string；必填 | Core 已认证的消息来源 ID |
+| `platform` | string；必填 | Core 已认证的平台 ID |
+| `external_message_id` | string；必填 | 平台侧稳定消息 ID |
+| `payload` | object；必填 | 来源平台原始 JSON 快照 |
+
+### 返回字段逐项说明
+
+| 字段 | 类型 / 必填与空值 | 含义与约束 | Core 如何使用 |
+| --- | --- | --- | --- |
+| `decision` | string；必填 | 是否接受来源消息 允许值：accepted / rejected。 | accepted 时继续验收 message；rejected 时返回 None，停止本条接入。 |
+| `message` | object；必填；可为 null | 转换后的 MessageRecv 兼容消息；直播来源携带 live_event.py 定义的 live_event 封装 | 接受时反复验收来源与标准消息结构，交给 consume_live_event() 按事件类型分流。 |
 
 <details>
 <summary>展开完整输入输出契约、约束与绑定数量</summary>
