@@ -1,5 +1,17 @@
 # 实现与验证状态
 
+## 2026-10-27 GitHub 市场上线记录
+
+- [PR #16](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/pull/16) 已合并到默认分支，包含安全封禁、解除封禁、签名工具及安全默认 `config.toml` 发布规则。
+- 基于最新默认分支的完整离线测试 219 项通过；[GitHub Actions CI](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/40451870389) 成功。早期本地旧分支的 schema 一致性失败在同步线上代码后消除。
+- Actions 签名私钥及公钥编号已配置；公钥文件 `security_keys.json` 已发布，私钥未进入仓库。
+- [初始化工作流](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/40452110063) 成功发布 `security.json`，序号为 1，封禁记录为 0。
+- 临时客户端已从真实 Raw 地址下载并验证签名。正式 `registry.json`、`catalog.json` 和 `versions/` 与上线前一致，未封禁真实插件。
+- 封禁、解除、隔离和修复版迁移使用临时测试数据验证，不向正式市场写入测试插件记录。
+- 本次只完成 GitHub 市场上线。主程序 GitLab 发布、实际客户端公钥配置、浏览器提示及服务重启另行安排。
+
+以下为早期实现记录，其中历史“待验证”描述应结合上述最新记录阅读。
+
 ## 本地已实现
 
 - 独立 Python 项目、空的正式 registry/catalog、示例插件和 Issue 表单。

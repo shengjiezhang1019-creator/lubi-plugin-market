@@ -1,5 +1,7 @@
 # 插件市场维护指南
 
+2026-10-27：市场工作流和公钥已发布，[初始化工作流](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/40452110063) 已成功生成第 1 版签名空名单，未封禁真实插件。客户端发布与重启另行安排。
+
 ## 1. 维护入口与流程
 
 市场仓库：[lubi-plugin-market](https://github.com/shengjiezhang1019-creator/lubi-plugin-market)。

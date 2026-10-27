@@ -10,7 +10,8 @@
 
 AI 不批准、不执行插件。首次和每次版本更新都由具有市场仓库 write/admin 权限的维护者批准。
 市场仓库已发布到 https://github.com/shengjiezhang1019-creator/lubi-plugin-market 。
-当前仍为第一版，AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，本地及 GitHub Actions 示例真实 AI 审核已通过，正式 Release 申请与人工批准收录链路尚待验证。
+AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，示例真实审核及正式 Release 申请、人工批准、目录发布链路已有验证记录。
+2026-10-27 已上线签名版本封禁工作流并发布第 1 版空名单；本次未封禁真实插件。客户端发布和服务重启另行安排。
 
 ## 配置发布规则
 
@@ -152,6 +153,12 @@ request.json：
 安全封禁独立于普通下架，停止受影响提交的分发，客户端重启后隔离插件。
 密钥配置、封禁、解除及恢复步骤见 [插件市场维护指南](docs/PLUGIN_SECURITY.md)。
 首次启用必须配置签名密钥与客户端可信公钥，不能只部署工作流。
+
+2026-10-27 上线记录：[发布 PR #16](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/pull/16)、
+[线上 CI](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/40451870389)、
+[初始化成功记录](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/40452110063)。
+公开通知为 [`security.json`](security.json)，可信公钥为 [`security_keys.json`](security_keys.json)。
+实际通知地址的客户端验签已通过，正式登记、目录和版本历史未改动；不代表现有客户端已部署或重启。
 
 ## 插件安全通知
 
