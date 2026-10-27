@@ -17,7 +17,7 @@
 | 检查审核为什么失败，或重新运行审核任务 | 打开市场仓库的 **Actions** 页面，选择 **Validate and review plugin**，进入对应运行记录 |
 | 下架或恢复插件 | 打开市场仓库的 **Actions** 页面，选择 **Withdraw or restore plugin**，点击 **Run workflow** |
 | 安全封禁或解除版本封禁 | 打开市场仓库的 **Actions** 页面，选择 **安全封禁或解除插件版本封禁**，点击 **Run workflow** |
-| 启用或检查安全通知 | 打开市场仓库的 **Actions** 页面，选择 **启用安全通知**，点击 **Run workflow**；新市场首次授权见第 5.1 节 |
+| 检查安全通知是否配置正常 | 市场仓库 → **Actions → 启用安全通知 → Run workflow**。当前市场已启用，平时无需重复运行。 |
 
 表中的英文名称是 GitHub Actions 页面里显示的工作流名称，用于定位对应操作。
 
