@@ -73,37 +73,6 @@ flowchart TD
     click tools "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#pfc_context_gathering" "查看模型工具说明"
 ```
 
-### 其他独立路径
-
-投机回复、礼物、记忆整理和直播控制各自触发，不能理解为弹幕回复之后还会依次执行这些步骤。
-
-```mermaid
-flowchart TD
-    subgraph speculative["投机回复路径"]
-        candidate["完整回复暂不展示"] --> rewrite["插件保留或替换文字<br/>AFTER_SPECULATIVE_REPLY_GENERATION"]
-        rewrite --> release["后续放行和发送使用最终文字"]
-    end
-    subgraph gift["礼物事件路径"]
-        received["礼物触发直接情绪处理"] --> description["插件保留或替换事件描述<br/>AFTER_GIFT_SIGNAL_TEXT_GENERATION"]
-        description --> emotion["按最终描述处理情绪"]
-    end
-    subgraph memory["记忆整理路径"]
-        unknown["理解聊天时遇到不懂的词"] --> lookup["插件查询词义<br/>MEMORY_TERM_LOOKUP"]
-        lookup --> meaning{"查到有效解释？"}
-        meaning -->|是| enrich["补充理解后继续整理记忆"]
-        meaning -->|否| unchanged["按原有理解继续整理"]
-    end
-    subgraph live["直播来源管理"]
-        request["请求启动、停止或查询"] --> control["插件处理直播来源操作<br/>DOUYIN_LIVE_CONTROL"]
-        control --> status["接收或停止接收直播消息<br/>同步房间状态与场次"]
-    end
-
-    click rewrite "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#after_speculative_reply_generation" "查看投机回复改写说明"
-    click description "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#after_gift_signal_text_generation" "查看礼物描述说明"
-    click lookup "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#memory_term_lookup" "查看术语查询说明"
-    click control "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#douyin_live_control" "查看直播控制说明"
-```
-
 ## 选择接入点
 
 | Hook | 类型 | 作用与结果去向 |
