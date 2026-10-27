@@ -162,7 +162,7 @@
           }
         }
       },
-      "label": "弹幕回复生成后的处理"
+      "label": "发送前保留或替换弹幕回复正文"
     },
     {
       "id": "AFTER_GIFT_SIGNAL_TEXT_GENERATION",
@@ -247,7 +247,7 @@
           }
         }
       },
-      "label": "礼物信号文案生成后的处理"
+      "label": "保留或替换礼物情绪事件描述"
     },
     {
       "id": "AFTER_SPECULATIVE_REPLY_GENERATION",
@@ -410,7 +410,7 @@
           }
         }
       },
-      "label": "推测回复生成后的处理"
+      "label": "放行前保留或替换投机回复正文"
     },
     {
       "id": "BARRAGE_PROCESSING",
@@ -547,7 +547,7 @@
           }
         }
       },
-      "label": "弹幕筛选与处理"
+      "label": "筛选消息并决定是否进入回复规划"
     },
     {
       "id": "BARRAGE_STEP_WEB_SEARCH",
@@ -596,7 +596,7 @@
           }
         }
       },
-      "label": "弹幕思考阶段的联网搜索"
+      "label": "提供弹幕检索步骤的联网摘要"
     },
     {
       "id": "BEFORE_DEEP_THINKING",
@@ -796,7 +796,7 @@
           }
         }
       },
-      "label": "深度思考前的规划接入"
+      "label": "提供深度执行的事实与回答约束"
     },
     {
       "id": "BEFORE_REPLY_CONTEXT",
@@ -830,7 +830,7 @@
           }
         }
       },
-      "label": "回复前补充参考资料"
+      "label": "向回复 Prompt 追加参考资料"
     },
     {
       "id": "DOUYIN_LIVE_CONTROL",
@@ -879,7 +879,7 @@
           }
         }
       },
-      "label": "抖音直播连接控制"
+      "label": "启动、停止或查询抖音直播来源"
     },
     {
       "id": "KNOWLEDGE_QUERY",
@@ -921,7 +921,7 @@
           }
         }
       },
-      "label": "本地知识查询"
+      "label": "查询知识并提供后续模型参考资料"
     },
     {
       "id": "MEMORY_TERM_LOOKUP",
@@ -968,7 +968,7 @@
           }
         }
       },
-      "label": "记忆术语查询"
+      "label": "查询术语并补充记忆语义结果"
     },
     {
       "id": "MESSAGE_INGRESS",
@@ -1029,7 +1029,7 @@
           }
         }
       },
-      "label": "标准消息接入"
+      "label": "转换或拒绝外部平台消息"
     },
     {
       "id": "PFC_CONTEXT_GATHERING",
@@ -1038,7 +1038,7 @@
       "components": [
         "tool"
       ],
-      "label": "向 PFC 规划模型提供上下文工具"
+      "label": "供 PFC 模型选择并调用插件工具"
     }
   ]
 }

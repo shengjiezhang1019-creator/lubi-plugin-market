@@ -1,5 +1,7 @@
 # 露比插件市场
 
+开发者入口：[Hook 接入与数据去向](docs/hook-contracts.md) · [提交插件或版本](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/issues/new?template=plugin.yml)
+
 独立于露比主程序的 GitHub 市场项目。目标流程：
 
 ```text

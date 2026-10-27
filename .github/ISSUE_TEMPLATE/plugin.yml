@@ -32,6 +32,18 @@ body:
         可从下方展开选择插件使用的 Hook（支持多选）。[查看完整 Hook 契约与示例](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md)。
         **勾选仅供审核说明，不会创建或修改绑定；实际接入以插件代码和宿主加载校验为准。**
         清单是宿主公开契约快照，目标宿主是否支持请以安装端为准。
+
+        **先按需要选择接入类型：**
+
+        | 类型 | 插件能做什么 | 典型 Hook |
+        | --- | --- | --- |
+        | 消息处理 | 转换消息、筛选进入规划的消息 | MESSAGE_INGRESS、BARRAGE_PROCESSING |
+        | 上下文补充 | 返回资料，由宿主放入后续上下文 | BEFORE_REPLY_CONTEXT、KNOWLEDGE_QUERY |
+        | 回复与语义处理 | 改写候选正文、事件描述，或补充语义结果 | AFTER_*、MEMORY_TERM_LOOKUP |
+        | 状态控制 | 管理直播来源与场次 | DOUYIN_LIVE_CONTROL |
+        | 模型工具 | 由模型选择工具，结果回填模型 | PFC_CONTEXT_GATHERING |
+
+        不确定字段怎么写？请查看上方完整契约中的「传入 → 返回 → 下游去向」及示例。
   - type: dropdown
     id: hooks
     attributes:
@@ -39,18 +51,18 @@ body:
       description: 请选择代码中实际绑定的 Hook，至少选择一项，可多选。
       multiple: true
       options:
-        - "AFTER_DANMAKU_REPLY_GENERATION — 弹幕回复生成后的处理"
-        - "AFTER_GIFT_SIGNAL_TEXT_GENERATION — 礼物信号文案生成后的处理"
-        - "AFTER_SPECULATIVE_REPLY_GENERATION — 推测回复生成后的处理"
-        - "BARRAGE_PROCESSING — 弹幕筛选与处理"
-        - "BARRAGE_STEP_WEB_SEARCH — 弹幕思考阶段的联网搜索"
-        - "BEFORE_DEEP_THINKING — 深度思考前的规划接入"
-        - "BEFORE_REPLY_CONTEXT — 回复前补充参考资料"
-        - "DOUYIN_LIVE_CONTROL — 抖音直播连接控制"
-        - "KNOWLEDGE_QUERY — 本地知识查询"
-        - "MEMORY_TERM_LOOKUP — 记忆术语查询"
-        - "MESSAGE_INGRESS — 标准消息接入"
-        - "PFC_CONTEXT_GATHERING — 向 PFC 规划模型提供上下文工具"
+        - "AFTER_DANMAKU_REPLY_GENERATION — 发送前保留或替换弹幕回复正文"
+        - "AFTER_GIFT_SIGNAL_TEXT_GENERATION — 保留或替换礼物情绪事件描述"
+        - "AFTER_SPECULATIVE_REPLY_GENERATION — 放行前保留或替换投机回复正文"
+        - "BARRAGE_PROCESSING — 筛选消息并决定是否进入回复规划"
+        - "BARRAGE_STEP_WEB_SEARCH — 提供弹幕检索步骤的联网摘要"
+        - "BEFORE_DEEP_THINKING — 提供深度执行的事实与回答约束"
+        - "BEFORE_REPLY_CONTEXT — 向回复 Prompt 追加参考资料"
+        - "DOUYIN_LIVE_CONTROL — 启动、停止或查询抖音直播来源"
+        - "KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"
+        - "MEMORY_TERM_LOOKUP — 查询术语并补充记忆语义结果"
+        - "MESSAGE_INGRESS — 转换或拒绝外部平台消息"
+        - "PFC_CONTEXT_GATHERING — 供 PFC 模型选择并调用插件工具"
     validations:
       required: true
   - type: textarea
