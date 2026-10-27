@@ -33,25 +33,24 @@ body:
         [查看各 Hook 的作用、输入输出和处理流程](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md)。
 
         此处选择仅用于审核说明，不会自动建立绑定。
-  - type: dropdown
+  - type: checkboxes
     id: hooks
     attributes:
       label: 使用的 Hook
       description: 请选择代码中实际绑定的 Hook，至少选择一项，可多选。
-      multiple: true
       options:
-        - "AFTER_DANMAKU_REPLY_GENERATION — 发送前保留或替换弹幕回复正文"
-        - "AFTER_GIFT_SIGNAL_TEXT_GENERATION — 保留或替换礼物情绪事件描述"
-        - "AFTER_SPECULATIVE_REPLY_GENERATION — 放行前保留或替换投机回复正文"
-        - "BARRAGE_PROCESSING — 筛选消息并决定是否进入回复规划"
-        - "BARRAGE_STEP_WEB_SEARCH — 提供弹幕检索步骤的联网摘要"
-        - "BEFORE_DEEP_THINKING — 提供深度执行的事实与回答约束"
-        - "BEFORE_REPLY_CONTEXT — 向回复 Prompt 追加参考资料"
-        - "DOUYIN_LIVE_CONTROL — 启动、停止或查询抖音直播来源"
-        - "KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"
-        - "MEMORY_TERM_LOOKUP — 查询术语并补充记忆语义结果"
-        - "MESSAGE_INGRESS — 转换或拒绝外部平台消息"
-        - "PFC_CONTEXT_GATHERING — 供 PFC 模型选择并调用插件工具"
+        - label: "AFTER_DANMAKU_REPLY_GENERATION — 发送前保留或替换弹幕回复正文"
+        - label: "AFTER_GIFT_SIGNAL_TEXT_GENERATION — 保留或替换礼物情绪事件描述"
+        - label: "AFTER_SPECULATIVE_REPLY_GENERATION — 放行前保留或替换投机回复正文"
+        - label: "BARRAGE_PROCESSING — 筛选消息并决定是否进入回复规划"
+        - label: "BARRAGE_STEP_WEB_SEARCH — 提供弹幕检索步骤的联网摘要"
+        - label: "BEFORE_DEEP_THINKING — 提供深度执行的事实与回答约束"
+        - label: "BEFORE_REPLY_CONTEXT — 向回复 Prompt 追加参考资料"
+        - label: "DOUYIN_LIVE_CONTROL — 启动、停止或查询抖音直播来源"
+        - label: "KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"
+        - label: "MEMORY_TERM_LOOKUP — 查询术语并补充记忆语义结果"
+        - label: "MESSAGE_INGRESS — 转换或拒绝外部平台消息"
+        - label: "PFC_CONTEXT_GATHERING — 供 PFC 模型选择并调用插件工具"
     validations:
       required: true
   - type: textarea
