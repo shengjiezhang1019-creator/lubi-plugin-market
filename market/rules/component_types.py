@@ -19,6 +19,11 @@ _PLUGIN_BASES = {
         "src.plugin_system.base.base_plugin",
     )
 }
+_HELPER_BASES = {
+    "abc.ABC", "typing.Protocol", "typing.TypedDict", "typing.NamedTuple",
+    "enum.Enum", "enum.IntEnum", "enum.StrEnum",
+}
+_COMPONENT_BASE_NAMES = {"BaseCommand", "BaseTool", "BaseEvent"}
 
 
 def _dotted(node):
@@ -34,7 +39,7 @@ def analyze_component_types(source: Path) -> dict:
     modules = {}
     trees = {}
     symbols = dict(_BASES)
-    harmless = set(_PLUGIN_BASES) | {"object"}
+    harmless = set(_PLUGIN_BASES) | _HELPER_BASES | {"object"}
     uncertain = set()
     classes = []
     for path in sorted(source.rglob("*.py")):
@@ -116,7 +121,8 @@ def analyze_component_types(source: Path) -> dict:
             if len(kinds) == 1 and symbols.get(key) != next(iter(kinds)):
                 symbols[key] = next(iter(kinds))
                 changed = True
-            if bases and all(base in harmless for base in bases) and key not in harmless:
+            ordinary_local = not bases and node.name not in _COMPONENT_BASE_NAMES
+            if (ordinary_local or (bases and all(base in harmless for base in bases))) and key not in harmless:
                 harmless.add(key)
                 changed = True
         if not changed:

@@ -69,6 +69,26 @@ def test_componentless_plugin_needs_no_declaration(tmp_path):
     assert analyze_component_types(tmp_path) == {"types": [], "status": "detected", "warnings": []}
 
 
+@pytest.mark.parametrize("helper", [
+    "class Parent: pass\nclass Child(Parent): pass",
+    "from typing import TypedDict as Record\nclass Payload(Record):\n value: str",
+    "from enum import Enum as Parent\nclass Kind(Parent):\n VALUE='value'",
+    "from abc import ABC\nclass Parent(ABC): pass\nclass Child(Parent): pass",
+])
+def test_normal_helper_inheritance_does_not_create_component_warning(tmp_path, helper):
+    package(tmp_path, {"plugin.py": "from src.plugin_system import BaseCommand\nclass Command(BaseCommand): pass\n" + helper})
+    assert analyze_component_types(tmp_path) == {"types": ["command"], "status": "detected", "warnings": []}
+
+
+def test_binding_an_ordinary_helper_is_still_unknown(tmp_path):
+    package(tmp_path, {"plugin.py": "from src.plugin_system import LifecycleBindingRequest\n"
+                     "class Helper: pass\nclass Child(Helper): pass\n"
+                     "binding = LifecycleBindingRequest(point_id='ANY', component=Child())"})
+    result = analyze_component_types(tmp_path)
+    assert result["status"] == "unknown"
+    assert any("绑定组件" in warning for warning in result["warnings"])
+
+
 def test_mixed_types_preserved_with_unknown_dynamic_path(tmp_path):
     package(tmp_path, {"plugin.py": "from src.plugin_system import BaseCommand, BaseTool\n"
                      "class Command(BaseCommand): pass\nclass Tool(BaseTool): pass\nDynamic = type('Dynamic', (), {})"})

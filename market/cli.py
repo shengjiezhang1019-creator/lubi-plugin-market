@@ -55,18 +55,25 @@ def review_marker(validation, ai, request):
         "ai_sha256": object_digest(ai)}, sort_keys=True) + " -->"
 
 
-def trusted_marker(api, slug, number):
-    markers = []
+def _review_bodies(api, slug, number):
+    """筛选可信机器人的审核评论；不同阶段仍重新读取，不能复用过期缓存。"""
     for comment in api.pages(f"/repos/{slug}/issues/{int(number)}/comments"):
         if comment["user"].get("login") != "github-actions[bot]" or comment["user"].get("type") != "Bot":
             continue
         body = comment.get("body", "")
+        if MARKER in body:
+            yield body
+
+
+def trusted_marker(api, slug, number):
+    latest = None
+    for body in _review_bodies(api, slug, number):
         match = re.search(re.escape(MARKER) + r"(\{[^\n]+\}) -->", body)
         if match:
-            markers.append(json.loads(match[1]))
-    if not markers:
+            latest = json.loads(match[1])
+    if latest is None:
         raise ValueError("缺少机器人发布的完整检查和 AI 审核报告，请重新提交申请完成审核")
-    return markers[-1]
+    return latest
 
 
 def assert_release_unchanged(api, validation):
@@ -135,20 +142,15 @@ def publish(args):
 
 def previous_ai(api, slug, number, work):
     import base64
-    matches = []
-    for comment in api.pages(f"/repos/{slug}/issues/{int(number)}/comments"):
-        if comment["user"].get("login") != "github-actions[bot]" or comment["user"].get("type") != "Bot":
-            continue
-        body = comment.get("body", "")
-        if MARKER not in body:
-            continue
+    latest = None
+    for body in _review_bodies(api, slug, number):
         encoded = re.search(r"<!-- lubi-ai-base64:([A-Za-z0-9+/=]+) -->", body)
         if encoded:
-            matches.append(json.loads(base64.b64decode(encoded[1])))
-    if not matches:
+            latest = json.loads(base64.b64decode(encoded[1]))
+    if latest is None:
         raise ValueError("没有可复核的 AI 审核报告")
-    write_json(work / "previous-ai.json", matches[-1])
-    return matches[-1]
+    write_json(work / "previous-ai.json", latest)
+    return latest
 
 
 def gate(args):
@@ -172,7 +174,8 @@ def gate(args):
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
             stream.write("eligible=false\nmode=ignored\n")
         return
-    set_status(api, slug, number, "检查中")
+    if mode == "review":
+        set_status(api, slug, number, "检查中")
     check_existing_request(args.root, request, resume_issue=number if mode in {"approve", "reject"} else None,
                            resume_status="approved" if mode == "approve" else "rejected")
     args.work.mkdir(parents=True, exist_ok=True)
