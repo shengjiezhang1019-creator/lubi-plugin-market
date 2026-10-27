@@ -50,6 +50,9 @@ def build_catalog(root, *, write=True):
             if record["status"] != "approved":
                 continue
             validation = record["validation"]
+            from .security import is_blocked
+            if is_blocked(root, name, registered["repository"], validation["commit"]):
+                continue
             if validation["request"]["plugin_name"] != name or repository(validation["request"]["repository"]) != registered["repository"]:
                 raise ValueError("版本记录与登记绑定不一致")
             records.append(record)

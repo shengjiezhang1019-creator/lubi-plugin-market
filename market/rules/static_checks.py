@@ -45,6 +45,15 @@ def _scan_python_files(pdir: Path) -> list[CheckResult]:
             results.append(CheckResult("syntax", Status.FAIL, f"语法错误: {exc.msg}", f"{rel}:{exc.lineno}"))
             continue
         for node in ast.walk(tree):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else []
+            if any(isinstance(target, ast.Name) and target.id == "config_file_name" for target in targets):
+                if isinstance(node.value, ast.Constant):
+                    if type(node.value.value) is not str or node.value.value not in ("", "config.toml"):
+                        results.append(CheckResult("config_file_name", Status.FAIL,
+                                                   "配置文件只能使用根目录 config.toml；不落盘时留空", f"{rel}:{node.lineno}"))
+                elif node.value is not None:
+                    results.append(CheckResult("config_file_name", Status.WARN,
+                                               "动态配置文件名无法静态确认，宿主加载时仍只允许 config.toml 或空串", f"{rel}:{node.lineno}"))
             for module, lineno in _imported_modules(node):
                 verdict = _classify_import(module, self_pkg)
                 if verdict is not None:
