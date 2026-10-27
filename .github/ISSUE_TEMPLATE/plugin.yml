@@ -39,9 +39,6 @@ body:
       label: 使用的 Hook
       description: 请选择代码中实际绑定的 Hook，至少选择一项，可多选。
       options:
-        - label: "AFTER_DANMAKU_REPLY_GENERATION — 发送前保留或替换弹幕回复正文"
-        - label: "AFTER_GIFT_SIGNAL_TEXT_GENERATION — 保留或替换礼物情绪事件描述"
-        - label: "AFTER_SPECULATIVE_REPLY_GENERATION — 放行前保留或替换投机回复正文"
         - label: "BARRAGE_PROCESSING — 筛选消息并决定是否进入回复规划"
         - label: "BARRAGE_STEP_WEB_SEARCH — 提供弹幕检索步骤的联网摘要"
         - label: "BEFORE_DEEP_THINKING — 提供深度执行的事实与回答约束"
