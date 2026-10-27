@@ -86,20 +86,28 @@ AI 或网络暂时异常时，在 `Actions → Validate and review plugin` 重�
 
 ### 5.1 首次配置安全通知
 
-在市场仓库环境中运行离线工具，将密钥输出到仓库以外的受保护目录：
+这一步是让露比认出“这条封禁通知确实是市场发的”，避免执行别人伪造的通知。
+市场用私钥给通知签名，露比用公钥核对签名。私钥必须保密，公钥可以公开。
 
-```powershell
-python -m market.security_keys --key-id market-2026 --private-output C:/private/market-security.key --public-output C:/private/security_keys.json
-```
+**当前市场已经配置好，并已发布第一份空名单，不需要重新生成密钥。** 当前公钥编号是 `market-20261027`。
+客户端的配置和部署留到后续处理。平时封禁、解封插件，直接按下一节操作即可。
 
-1. 将私钥文件内容保存到 GitHub 市场仓库的 Actions Secret：`MARKET_SECURITY_PRIVATE_KEY`。私钥不要提交 Git，也不要发给用户；Windows 上应限制私钥文件的访问权限。
-2. 将公钥编号 `market-2026` 保存到 Actions Variable：`MARKET_SECURITY_KEY_ID`。
-3. 将公钥 JSON 作为市场仓库根目录的 `security_keys.json` 发布。
-4. 通过可信的主程序发布或管理员配置，将同一公钥 JSON 放到客户端的 `config/plugin_market_security_keys.json`。客户端不会自动信任网上下载的陌生公钥。
-5. 发布两端修改后，在安全工作流选择 `initialize`，填写启用原因，发布带签名的空名单，无需封禁真实插件。
+如果以后重新搭建市场，再做下面这些步骤：
 
-未配置公钥时，客户端会提示同步失败，不能认为安全通知已经启用。
-轮换密钥时应保留验证已有名单所需的旧公钥。私钥泄露后，需要通过可信发布更新客户端的信任配置，不能只靠泄露的密钥发布声明。
+1. **生成两个文件。** 在电脑上打开市场项目文件夹，在终端运行下面的命令。示例会把文件保存到 `C:/private/`，不要放进准备上传的代码目录。
+
+   ```powershell
+   python -m market.security_keys --key-id market-2026 --private-output C:/private/market-security.key --public-output C:/private/security_keys.json
+   ```
+
+2. **把私钥交给 GitHub 保管。** 打开生成的 `market-security.key`，把内容存到市场仓库的 Actions Secret，名称填 `MARKET_SECURITY_PRIVATE_KEY`。以后 GitHub 会用它给通知签名。不要把这个文件上传到代码仓库或发给用户；本机副本也只应让负责市场的人访问。
+3. **发布公钥。** 把生成的 `security_keys.json` 放到市场仓库根目录并上传。再添加一个 Actions Variable，名称填 `MARKET_SECURITY_KEY_ID`，值填命令中的编号；上面的示例是 `market-2026`。这个编号用来告诉程序该使用哪把钥匙。
+4. **让露比能核对通知。** 在装好新版露比的机器上，把同一份公钥文件保存为 `config/plugin_market_security_keys.json`。文件应由市场管理员或可信的程序安装包提供，不要随便从陌生链接下载一份替换。
+5. **发布一份空名单。** 在市场仓库打开 **Actions → 安全封禁或解除插件版本封禁 → Run workflow**，将 `action` 选为 `initialize`，填写启用原因后运行。这只是启用通知，不会封禁任何插件。
+
+客户端没有配置公钥时，会提示同步失败，不能认为它已经能接收安全通知。
+以后换钥匙时，要同时安排更新客户端的公钥，并保留核对旧名单所需的旧公钥。
+如果私钥泄露，应通过可信的程序更新或由管理员直接更换客户端公钥；不能只靠旧钥匙签一条“请换钥匙”的通知。
 
 ### 5.2 封禁与解除封禁
 
