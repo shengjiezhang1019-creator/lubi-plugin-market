@@ -6,6 +6,104 @@
 
 Issue 表单用于声明插件实际使用的 Hook，不会建立绑定。普通 Hook 的结果由 Core 验收并消费；模型工具 Hook 由模型按需选择 Tool。
 
+## Hook 在流程中的位置
+
+先看要处理哪一步，再选择对应 Hook。下面是接入位置示意，不表示每条消息都会经过全部节点。图中的 Hook 名称可点击，跳到本页详细说明。
+
+### 弹幕回复主路径
+
+消息转换只对应接入了该 Hook 的平台入口；后面的筛选和回复是弹幕自动回复路径。普通聊天及其他事件会走各自的入口和处理流程。
+
+```mermaid
+flowchart TD
+    incoming["收到平台原始消息"] --> ingress["转换或拒绝消息<br/>MESSAGE_INGRESS"]
+    ingress --> accepted{"是否接受？"}
+    accepted -->|否| stop["结束本条消息处理"]
+    accepted -->|是| kind{"是哪种消息？"}
+    kind -->|礼物或其他事件| other["交给对应事件流程"]
+    kind -->|聊天弹幕| collect["积累一批弹幕"]
+    collect --> select["挑选值得关注的消息<br/>BARRAGE_PROCESSING"]
+    select --> picked{"本轮有可用的选中消息？"}
+    picked -->|否或处理失败| skip["本轮不回复，等待后续轮次"]
+    picked -->|是| decision{"系统决定怎么处理"}
+    decision -->|不回复| finish["结束本轮"]
+    decision -->|正在忙| queue["等待后续处理<br/>等得太久则跳过"]
+    decision -->|回复| prepare["准备回复所需资料<br/>详见下方资料补充图"]
+    prepare --> generate["生成完整回复"]
+    generate --> transform["保留或替换弹幕回复文字<br/>AFTER_DANMAKU_REPLY_GENERATION"]
+    transform --> send["通过后续发送判断后发出回复"]
+
+    click ingress "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#message_ingress" "查看消息接入说明"
+    click select "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_processing" "查看弹幕筛选说明"
+    click transform "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#after_danmaku_reply_generation" "查看回复改写说明"
+```
+
+### 资料怎样进入回答
+
+这些是不同的补充入口，并非必须依次调用。没有补充资料时通常按已有信息继续回答；深度思考贡献目前存在后续传递断点，图中单独标出。
+
+```mermaid
+flowchart TD
+    need["本轮需要补充什么？"]
+    need -->|回复参考资料| context["插件提供资料<br/>BEFORE_REPLY_CONTEXT"]
+    context --> contextok{"资料有效？"}
+    contextok -->|是| prompt["资料加在回复目标后面"]
+    contextok -->|否| original["按已有信息继续"]
+    need -->|本地知识| knowledge["插件查询知识<br/>KNOWLEDGE_QUERY"]
+    knowledge --> knowledgeok{"查到对应资料？"}
+    knowledgeok -->|是| reference["作为回答的参考资料"]
+    knowledgeok -->|否| original
+    need -->|弹幕检索步骤需要联网| web["插件提供搜索摘要<br/>BARRAGE_STEP_WEB_SEARCH"]
+    web --> webok{"摘要有效？"}
+    webok -->|是| reference
+    webok -->|否| original
+    prompt --> reply["模型结合本轮信息生成回答"]
+    reference --> reply
+    original --> reply
+    need -->|进入深度执行前补充| deep["插件补充事实与回答要求<br/>BEFORE_DEEP_THINKING"]
+    deep --> gap["当前后续传递未接通<br/>尚不能送达最终回复模型"]
+    need -->|PFC 规划模型需要工具| tools["模型按需选择并调用工具<br/>PFC_CONTEXT_GATHERING"]
+    tools --> result["结果交回模型，帮助决定下一步"]
+    result --> reuse["成功取得的文字资料<br/>还可供本轮回复参考"]
+
+    click context "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#before_reply_context" "查看回复资料说明"
+    click knowledge "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#knowledge_query" "查看知识查询说明"
+    click web "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_step_web_search" "查看联网摘要说明"
+    click deep "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#before_deep_thinking" "查看思考贡献说明"
+    click tools "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#pfc_context_gathering" "查看模型工具说明"
+```
+
+### 其他独立路径
+
+投机回复、礼物、记忆整理和直播控制各自触发，不能理解为弹幕回复之后还会依次执行这些步骤。
+
+```mermaid
+flowchart TD
+    subgraph speculative["投机回复路径"]
+        candidate["完整回复暂不展示"] --> rewrite["插件保留或替换文字<br/>AFTER_SPECULATIVE_REPLY_GENERATION"]
+        rewrite --> release["后续放行和发送使用最终文字"]
+    end
+    subgraph gift["礼物事件路径"]
+        received["礼物触发直接情绪处理"] --> description["插件保留或替换事件描述<br/>AFTER_GIFT_SIGNAL_TEXT_GENERATION"]
+        description --> emotion["按最终描述处理情绪"]
+    end
+    subgraph memory["记忆整理路径"]
+        unknown["理解聊天时遇到不懂的词"] --> lookup["插件查询词义<br/>MEMORY_TERM_LOOKUP"]
+        lookup --> meaning{"查到有效解释？"}
+        meaning -->|是| enrich["补充理解后继续整理记忆"]
+        meaning -->|否| unchanged["按原有理解继续整理"]
+    end
+    subgraph live["直播来源管理"]
+        request["请求启动、停止或查询"] --> control["插件处理直播来源操作<br/>DOUYIN_LIVE_CONTROL"]
+        control --> status["接收或停止接收直播消息<br/>同步房间状态与场次"]
+    end
+
+    click rewrite "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#after_speculative_reply_generation" "查看投机回复改写说明"
+    click description "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#after_gift_signal_text_generation" "查看礼物描述说明"
+    click lookup "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#memory_term_lookup" "查看术语查询说明"
+    click control "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#douyin_live_control" "查看直播控制说明"
+```
+
 ## 选择接入点
 
 | Hook | 类型 | 作用与结果去向 |

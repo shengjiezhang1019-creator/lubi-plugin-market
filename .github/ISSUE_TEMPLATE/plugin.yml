@@ -30,6 +30,7 @@ body:
     attributes:
       value: |
         请选择插件代码中实际使用的 Hook，可多选。
+        [查看 Hook 流程图](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#hook-在流程中的位置) ·
         [查看各 Hook 的作用、输入输出和处理流程](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md)。
 
         此处选择仅用于审核说明，不会自动建立绑定。
