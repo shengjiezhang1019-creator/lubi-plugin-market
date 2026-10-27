@@ -17,7 +17,8 @@ jobs:
     if: >-
       github.event.issue.state == 'open' && !github.event.issue.pull_request &&
       (github.event_name == 'issues' && (contains(github.event.issue.body, '### 插件名称') || startsWith(github.event.issue.title, '[Plugin]') || startsWith(github.event.issue.title, '[Release]')) ||
-      github.event_name == 'issue_comment')
+      (github.event_name == 'issue_comment' &&
+      (contains(github.event.comment.body, '/approve') || contains(github.event.comment.body, '/reject'))))
     runs-on: ubuntu-24.04
     permissions:
       contents: read
