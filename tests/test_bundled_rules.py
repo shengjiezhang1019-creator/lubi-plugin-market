@@ -46,7 +46,6 @@ def test_static_rules_reject_dangerous_or_invalid_code_without_executing(tmp_pat
 def test_report_binds_bundled_rules_without_external_host(tmp_path):
     root = tmp_path / "market"
     write_json(root / "registry.json", {"plugins": {}})
-    write_json(root / "config/market.json", read_json(ROOT / "config/market.json"))
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         for file in (ROOT / "examples/demo_plugin").rglob("*"):
@@ -77,7 +76,6 @@ def test_workflow_does_not_checkout_external_host():
     assert "--host" not in workflow
     assert "scripts/host_config.py" not in workflow
     assert "market.cli validate --work" in workflow
-    assert "host_repository" not in read_json(ROOT / "config/market.json")
 
 
 def test_market_and_host_do_not_require_component_type_declarations():

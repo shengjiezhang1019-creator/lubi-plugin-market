@@ -1,6 +1,0 @@
-{
-  "schema_version": 1,
-  "max_archive_bytes": 16777216,
-  "max_review_bytes": 400000,
-  "dependency_policy": "runtime-environment-v1"
-}

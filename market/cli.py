@@ -269,9 +269,6 @@ def run_action(args):
         # 临时元数据保持正式 registry/catalog 不变；规则直接使用本仓库版本。
         with tempfile.TemporaryDirectory(prefix="demo-meta-", dir=args.work) as temporary:
             root = Path(temporary)
-            (root / "config").mkdir()
-            config = read_json(args.root / "config/market.json")
-            write_json(root / "config/market.json", config)
             write_json(root / "registry.json", {"schema_version": 1, "plugins": {}})
             buffer = io.BytesIO()
             with zipfile.ZipFile(buffer, "w") as archive:
