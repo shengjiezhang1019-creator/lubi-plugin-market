@@ -12,16 +12,11 @@ Issue 表单用于声明插件实际使用的 Hook，不会建立绑定。普通
 
 ### 弹幕回复主路径
 
-消息转换只对应接入了该 Hook 的平台入口；后面的筛选和回复是弹幕自动回复路径。普通聊天及其他事件会走各自的入口和处理流程。
+下面展示聊天弹幕进入自动回复流程后的筛选和回复路径。普通聊天及其他事件会走各自的入口和处理流程。
 
 ```mermaid
 flowchart TD
-    incoming["收到平台原始消息"] --> ingress["转换或拒绝消息<br/>MESSAGE_INGRESS"]
-    ingress --> accepted{"是否接受？"}
-    accepted -->|否| stop["结束本条消息处理"]
-    accepted -->|是| kind{"是哪种消息？"}
-    kind -->|礼物或其他事件| other["交给对应事件流程"]
-    kind -->|聊天弹幕| collect["积累一批弹幕"]
+    incoming["收到聊天弹幕"] --> collect["积累一批弹幕"]
     collect --> select["挑选值得关注的消息<br/>BARRAGE_PROCESSING"]
     select --> picked{"本轮有可用的选中消息？"}
     picked -->|否或处理失败| skip["本轮不回复，等待后续轮次"]
@@ -32,7 +27,6 @@ flowchart TD
     prepare --> generate["生成完整回复"]
     generate --> send["通过后续发送判断后发出回复"]
 
-    click ingress "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#message_ingress" "查看消息接入说明"
     click select "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_processing" "查看弹幕筛选说明"
 ```
 
@@ -77,7 +71,6 @@ flowchart TD
 | [KNOWLEDGE_QUERY](#knowledge_query) | 上下文补充 | 查询知识并提供后续模型参考资料 |
 | [BARRAGE_STEP_WEB_SEARCH](#barrage_step_web_search) | 上下文补充 | 提供弹幕检索步骤的联网摘要 |
 | [MEMORY_TERM_LOOKUP](#memory_term_lookup) | 语义结果补充 | 查询术语并补充记忆语义结果 |
-| [MESSAGE_INGRESS](#message_ingress) | 消息处理 | 转换或拒绝外部平台消息 |
 | [DOUYIN_LIVE_CONTROL](#douyin_live_control) | 状态控制 | 启动、停止或查询抖音直播来源 |
 | [PFC_CONTEXT_GATHERING](#pfc_context_gathering) | 模型工具 | 供 PFC 模型选择并调用插件工具 |
 
@@ -729,110 +722,6 @@ flowchart TD
 
 </details>
 
-## MESSAGE_INGRESS
-
-**转换或拒绝外部平台消息** · 消息处理
-
-```text
-收到平台原始消息 → 插件转换并判断是否接收
-                     ├─ 拒绝 → 停止处理这条消息
-                     ├─ 接受且消息有效 → 按消息类型交给后续流程
-                     │                    ├─ 聊天 → 对话处理
-                     │                    ├─ 礼物 → 礼物与情绪处理
-                     │                    └─ 开播、下播等事件 → 对应事件处理
-                     └─ 插件不可用、处理失败或消息不合法 → 返回接入错误
-```
-
-| 数据 | 内容 |
-| --- | --- |
-| 返回后会发生什么 | 接受后，消息按聊天、礼物、开播等类型交给相应流程处理；拒绝后，这条消息不再往下处理。 |
-| 无可用结果时 | 组件缺失或失败时报接入错误；正常拒绝不进入后续处理。 |
-
-### 传入字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与来源 |
-| --- | --- | --- |
-| `source_id` | string；必填 | 系统 已认证的消息来源 ID |
-| `platform` | string；必填 | 系统 已认证的平台 ID |
-| `external_message_id` | string；必填 | 平台侧稳定消息 ID |
-| `payload` | object；必填 | 来源平台原始 JSON 快照 |
-
-### 返回字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与约束 | 返回后会发生什么 |
-| --- | --- | --- | --- |
-| `decision` | string；必填 | 是否接受来源消息 允许值：accepted / rejected。 | 接受就继续处理，拒绝就停止处理这条消息。 |
-| `message` | object；必填；可为 null | 转换后的 MessageRecv 兼容消息；直播来源携带 live_event.py 定义的 live_event 封装 | 按消息类型继续处理：聊天走对话流程，礼物走礼物流程，其他事件走各自流程。 |
-
-<details>
-<summary>展开完整输入输出契约、约束与绑定数量</summary>
-
-把已认证平台原始消息转换成 MaiBot 标准消息
-
-允许的组件类型：command, tool。
-
-绑定数量：最少 0，最多 不限。
-
-输入契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "source_id": {
-      "type": "string",
-      "description": "Core 已认证的消息来源 ID"
-    },
-    "platform": {
-      "type": "string",
-      "description": "Core 已认证的平台 ID"
-    },
-    "external_message_id": {
-      "type": "string",
-      "description": "平台侧稳定消息 ID"
-    },
-    "payload": {
-      "type": "object",
-      "description": "来源平台原始 JSON 快照",
-      "constraints": {
-        "properties": {},
-        "allow_extra": true
-      }
-    }
-  }
-}
-```
-
-返回 data 契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "decision": {
-      "type": "string",
-      "description": "是否接受来源消息",
-      "constraints": {
-        "enum": [
-          "accepted",
-          "rejected"
-        ]
-      }
-    },
-    "message": {
-      "type": "object",
-      "description": "转换后的 MessageRecv 兼容消息；直播来源携带 live_event.py 定义的 live_event 封装",
-      "nullable": true,
-      "constraints": {
-        "properties": {},
-        "allow_extra": true
-      }
-    }
-  }
-}
-```
-
-</details>
 
 ## PFC_CONTEXT_GATHERING
 

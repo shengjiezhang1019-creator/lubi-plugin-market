@@ -45,7 +45,6 @@ body:
         - label: "DOUYIN_LIVE_CONTROL — 启动、停止或查询抖音直播来源"
         - label: "KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"
         - label: "MEMORY_TERM_LOOKUP — 查询术语并补充记忆语义结果"
-        - label: "MESSAGE_INGRESS — 转换或拒绝外部平台消息"
         - label: "PFC_CONTEXT_GATHERING — 供 PFC 模型选择并调用插件工具"
     validations:
       required: true
