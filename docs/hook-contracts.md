@@ -40,16 +40,6 @@ flowchart TD
     click web "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_step_web_search" "查看联网摘要说明"
 ```
 
-### 记忆术语补充
-
-```mermaid
-flowchart LR
-    memory["记忆总结需要解释术语"] --> lookup["查询术语<br/>MEMORY_TERM_LOOKUP"]
-    lookup --> summary["有解释则补充，继续记忆总结"]
-
-    click lookup "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#memory_term_lookup" "查看术语查询说明"
-```
-
 ### PFC 模型工具
 
 ```mermaid
@@ -68,7 +58,6 @@ flowchart LR
 | [BEFORE_REPLY_CONTEXT](#before_reply_context) | 上下文补充 | 向回复 Prompt 追加参考资料 |
 | [KNOWLEDGE_QUERY](#knowledge_query) | 上下文补充 | 查询知识并提供后续模型参考资料 |
 | [BARRAGE_STEP_WEB_SEARCH](#barrage_step_web_search) | 上下文补充 | 提供弹幕检索步骤的联网摘要 |
-| [MEMORY_TERM_LOOKUP](#memory_term_lookup) | 语义结果补充 | 查询术语并补充记忆语义结果 |
 | [PFC_CONTEXT_GATHERING](#pfc_context_gathering) | 模型工具 | 供 PFC 模型选择并调用插件工具 |
 
 ## 阅读方式
@@ -543,94 +532,6 @@ flowchart LR
 ```
 
 </details>
-
-## MEMORY_TERM_LOOKUP
-
-**查询术语并补充记忆语义结果** · 语义结果补充
-
-```text
-整理聊天时遇到不懂的词 → 插件查询含义
-                         ├─ 查到解释 → 补充对聊天的理解 → 继续总结和提取记忆
-                         └─ 没查到、解释超长或处理失败 → 按原有理解继续整理
-```
-
-| 数据 | 内容 |
-| --- | --- |
-| 返回后会发生什么 | 术语解释会补进本次聊天的理解结果，帮助后续总结和提取记忆；有补充时记录哪些词已解释，并可能把原先含糊的意图标记为已澄清。 |
-| 无可用结果时 | 无解释时不追加资料，继续使用已有语义结果。 |
-
-### 传入字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与来源 |
-| --- | --- | --- |
-| `lookup_id` | string；必填 | 本次查询的稳定审计 ID |
-| `stream_id` | string；必填 | 被总结的聊天流稳定 ID |
-| `term` | string；必填 | 模型表示看不懂的术语、梗或缩写；系统 保证非空 |
-| `needed_context` | string；必填 | 模型自述需要的背景知识；没有时为空串 |
-| `context` | string；必填 | 术语出现的原文片段，最多 1000 字 |
-
-### 返回字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与约束 | 返回后会发生什么 |
-| --- | --- | --- | --- |
-| `explanation` | string；必填；可为 null | 术语解释，不超过 1000 字；查不到时为 null | 帮助系统理解这个词，再继续总结聊天和提取记忆。 |
-
-<details>
-<summary>展开完整输入输出契约、约束与绑定数量</summary>
-
-记忆总结语义增强时查询模型看不懂的单个术语；不决定要不要增强、查哪些词，也不改写记忆。失效或结果非法时该术语不补充解释，总结照常继续
-
-允许的组件类型：command, tool。
-
-绑定数量：最少 0，最多 1。
-
-输入契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "lookup_id": {
-      "type": "string",
-      "description": "本次查询的稳定审计 ID"
-    },
-    "stream_id": {
-      "type": "string",
-      "description": "被总结的聊天流稳定 ID"
-    },
-    "term": {
-      "type": "string",
-      "description": "模型表示看不懂的术语、梗或缩写；Core 保证非空"
-    },
-    "needed_context": {
-      "type": "string",
-      "description": "模型自述需要的背景知识；没有时为空串"
-    },
-    "context": {
-      "type": "string",
-      "description": "术语出现的原文片段，最多 1000 字"
-    }
-  }
-}
-```
-
-返回 data 契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "explanation": {
-      "type": "string",
-      "description": "术语解释，不超过 1000 字；查不到时为 null",
-      "nullable": true
-    }
-  }
-}
-```
-
-</details>
-
 
 ## PFC_CONTEXT_GATHERING
 

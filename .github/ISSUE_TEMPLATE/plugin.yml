@@ -43,7 +43,6 @@ body:
         - label: "BARRAGE_STEP_WEB_SEARCH — 提供弹幕检索步骤的联网摘要"
         - label: "BEFORE_REPLY_CONTEXT — 向回复 Prompt 追加参考资料"
         - label: "KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"
-        - label: "MEMORY_TERM_LOOKUP — 查询术语并补充记忆语义结果"
         - label: "PFC_CONTEXT_GATHERING — 供 PFC 模型选择并调用插件工具"
     validations:
       required: true

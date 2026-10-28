@@ -264,53 +264,6 @@
       "label": "查询知识并提供后续模型参考资料"
     },
     {
-      "id": "MEMORY_TERM_LOOKUP",
-      "description": "记忆总结语义增强时查询模型看不懂的单个术语；不决定要不要增强、查哪些词，也不改写记忆。失效或结果非法时该术语不补充解释，总结照常继续",
-      "kind": "lifecycle",
-      "components": [
-        "command",
-        "tool"
-      ],
-      "min_bindings": 0,
-      "max_bindings": 1,
-      "input": {
-        "type": "object",
-        "properties": {
-          "lookup_id": {
-            "type": "string",
-            "description": "本次查询的稳定审计 ID"
-          },
-          "stream_id": {
-            "type": "string",
-            "description": "被总结的聊天流稳定 ID"
-          },
-          "term": {
-            "type": "string",
-            "description": "模型表示看不懂的术语、梗或缩写；Core 保证非空"
-          },
-          "needed_context": {
-            "type": "string",
-            "description": "模型自述需要的背景知识；没有时为空串"
-          },
-          "context": {
-            "type": "string",
-            "description": "术语出现的原文片段，最多 1000 字"
-          }
-        }
-      },
-      "result": {
-        "type": "object",
-        "properties": {
-          "explanation": {
-            "type": "string",
-            "description": "术语解释，不超过 1000 字；查不到时为 null",
-            "nullable": true
-          }
-        }
-      },
-      "label": "查询术语并补充记忆语义结果"
-    },
-    {
       "id": "PFC_CONTEXT_GATHERING",
       "description": "向 PFC 当前规划轮次提供记忆、本地知识库和联网搜索 Tool；PFC 自己的模型按需选择 Tool，并继续自己的模型循环",
       "kind": "model_tool",
