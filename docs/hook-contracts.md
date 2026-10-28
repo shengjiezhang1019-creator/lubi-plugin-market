@@ -550,6 +550,44 @@ flowchart TD
 
 ### 工具接入与调用规则
 
+在插件的 `plugin.py` 中实现 `BaseTool`，再通过 `BasePlugin.build_lifecycle_bindings()` 将工具实例绑定到 `PFC_CONTEXT_GATHERING`。下面用字符计数工具演示最小写法，实际使用时替换工具用途、参数和执行逻辑：
+
+```python
+from src.plugin_system.base.base_plugin import BasePlugin
+from src.plugin_system.base.component_contexts import BaseTool, ToolContext
+from src.plugin_system.base.hook_contracts.pfc_context_gathering import PFC_CONTEXT_GATHERING
+from src.plugin_system.base.json_types import DataSchema
+from src.plugin_system.base.mount_point_types import LifecycleBindingRequest
+from src.plugin_system.base.tool_types import ToolInfo, ToolRequest, ToolResult
+
+
+class TextLengthTool(BaseTool):
+    info = ToolInfo(
+        name="text_length",
+        description="统计给定文本的字符数，包含空格和标点",
+        model_parameter_schema=DataSchema(
+            properties={"text": {"type": "string", "description": "需要统计的文本"}}
+        ),
+    )
+
+    async def execute(self, request: ToolRequest, ctx: ToolContext) -> ToolResult:
+        return ToolResult(data={"count": len(request.params["text"])})
+
+
+class MyPlugin(BasePlugin):
+    def build_lifecycle_bindings(self) -> tuple[LifecycleBindingRequest, ...]:
+        return (
+            LifecycleBindingRequest(
+                point_id=PFC_CONTEXT_GATHERING.point_id,
+                component=TextLengthTool(),
+            ),
+        )
+```
+
+插件目录还需提供合法的 `_manifest.json`。Binding 携带工具实例，框架会自动注册，无需另写注册调用；挂多个工具时，在返回的 tuple 中增加对应 Binding。插件启用并加载成功后，工具进入 PFC 的候选目录，是否调用由模型决定。Issue 表单勾选不会建立绑定。
+
+`model_parameter_schema` 必须声明模型填写的参数；`execute()` 从 `request.params` 读取参数并返回 `ToolResult(data=...)`。工具名称和用途说明会提供给模型，须写清能力与适用场景。
+
 | 项目 | 规则 |
 | --- | --- |
 | Hook 的职责 | 提供当前挂载的可用 Tool 目录；模型调用和循环由 PFC 管理 |
