@@ -30,11 +30,7 @@ AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，示例真实审核及正
 ```powershell
 python -m pip install -e '.[dev]'
 python -m pytest -q
-python -m market.cli demo --work .work/demo
 ```
-
-demo 不联网、不调用 AI、不安装依赖，只验证测试源码的结构与市场自带静态规则。
-报告会标记 `static_only`，不能进入批准流程；不会给 catalog 添加虚构插件。
 
 完整远程验证（先完成下面的配置）：
 
@@ -153,13 +149,6 @@ Issue 中勾选的 Hook 会作为申报信息进入审核请求。市场静态�
 - 插件间依赖：市场安装器已注释“声明 `plugin_dependencies` 就拒绝安装”的旧拦截。市场端“依赖已满足则允许、缺失则列出插件名和版本要求、由用户手动安装”的引导暂缓实现。
   运行时依赖图和加载顺序检查仍保留，依赖缺失或版本不符仍可能在加载阶段失败并触发安装回滚；不自动安装依赖插件。
 - 以上暂缓项不影响 Python 库的自动安装及冲突校验，也不代表完整兼容策略或依赖引导已经实现。
-
-## 真实 AI 冒烟验证
-
-2026-10-22 本地和 GitHub Actions 真实调用均通过，使用百炼 `deepseek-v4-pro-0813` 审核公开的 `examples/demo_plugin`。
-测试不创建申请、不发表评论、不批准或修改正式索引，验证报告保留 `static_only`，不能用作收录凭证。
-手动运行 Actions 的 `AI review smoke test` 可复测（会产生模型调用费用）。
-本次运行：https://github.com/shengjiezhang1019-creator/lubi-plugin-market/actions/runs/39750078123，报告保存在该次运行的 `ai-review-smoke` artifact（保留 7 天）。
 
 ## 插件版本安全封禁
 

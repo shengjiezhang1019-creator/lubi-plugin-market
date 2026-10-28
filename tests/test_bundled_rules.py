@@ -13,23 +13,22 @@ from market.validation import framework_check, rules_fingerprint
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def plugin(tmp_path):
-    manifest = read_json(ROOT / "examples/demo_plugin/_manifest.json")
+def plugin(tmp_path, manifest):
     write_json(tmp_path / "_manifest.json", manifest)
     (tmp_path / "plugin.py").write_text("from src.plugin_system import BasePlugin\n", encoding="utf-8")
     return manifest
 
 
-def test_valid_manifest_and_code_need_no_host_checkout(tmp_path, monkeypatch):
+def test_valid_manifest_and_code_need_no_host_checkout(tmp_path, monkeypatch, plugin_manifest):
     import subprocess
 
-    plugin(tmp_path)
+    plugin(tmp_path, plugin_manifest)
     monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: pytest.fail("不能拉取或查询主程序 Git"))
     assert not any(check["status"] == "fail" for check in framework_check(tmp_path))
 
 
-def test_invalid_python_dependency_shape_is_rejected(tmp_path):
-    manifest = plugin(tmp_path)
+def test_invalid_python_dependency_shape_is_rejected(tmp_path, plugin_manifest):
+    manifest = plugin(tmp_path, plugin_manifest)
     manifest["python_dependencies"] = ["httpx"]
     write_json(tmp_path / "_manifest.json", manifest)
     with pytest.raises(ValueError, match="manifest"):
@@ -37,21 +36,25 @@ def test_invalid_python_dependency_shape_is_rejected(tmp_path):
 
 
 @pytest.mark.parametrize("code", ["import subprocess", "eval('1')", "def invalid(:"])
-def test_static_rules_reject_dangerous_or_invalid_code_without_executing(tmp_path, code):
-    plugin(tmp_path)
+def test_static_rules_reject_dangerous_or_invalid_code_without_executing(tmp_path, code, plugin_manifest):
+    plugin(tmp_path, plugin_manifest)
     (tmp_path / "plugin.py").write_text(code, encoding="utf-8")
     assert any(check["status"] == "fail" for check in framework_check(tmp_path))
 
 
-def test_report_binds_bundled_rules_without_external_host(tmp_path):
+def test_report_binds_bundled_rules_without_external_host(tmp_path, plugin_manifest):
     root = tmp_path / "market"
     write_json(root / "registry.json", {"plugins": {}})
+    source = tmp_path / "source"
+    source.mkdir()
+    plugin(source, plugin_manifest)
+    (source / "README.md").write_text("test", encoding="utf-8")
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
-        for file in (ROOT / "examples/demo_plugin").rglob("*"):
+        for file in source.rglob("*"):
             if file.is_file():
-                archive.write(file, "demo/" + file.relative_to(ROOT / "examples/demo_plugin").as_posix())
-    request = {"plugin_name": "demo_plugin", "repository": "https://github.com/example/demo", "tag": "v0.1.0"}
+                archive.write(file, "source/" + file.relative_to(source).as_posix())
+    request = {"plugin_name": plugin_manifest["name"], "repository": "https://github.com/example/test", "tag": "v1.0.0"}
     report, source = validate(root, request, tmp_path / "work", static_only=True,
                               archive_data=buffer.getvalue(), commit="a" * 40)
     assert report["status"] == "static_only"

@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import io
 import json
 import os
 import re
 import subprocess
 import sys
-import tempfile
-import zipfile
 from pathlib import Path
 
 from .ai_review import review, source_bundle, validate_response
@@ -218,7 +215,7 @@ def reject(args):
 
 def main():
     parser = argparse.ArgumentParser(description="露比插件市场工具")
-    parser.add_argument("action", choices=["gate", "validate", "ai", "publish", "catalog", "reject", "demo", "failure"])
+    parser.add_argument("action", choices=["gate", "validate", "ai", "publish", "catalog", "reject", "failure"])
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--work", type=Path, default=Path(".work/current"))
     parser.add_argument("--request", type=Path)
@@ -265,19 +262,6 @@ def run_action(args):
         reject(args)
     elif args.action == "failure":
         failure(args, GitHub())
-    elif args.action == "demo":
-        # 临时元数据保持正式 registry/catalog 不变；规则直接使用本仓库版本。
-        with tempfile.TemporaryDirectory(prefix="demo-meta-", dir=args.work) as temporary:
-            root = Path(temporary)
-            write_json(root / "registry.json", {"schema_version": 1, "plugins": {}})
-            buffer = io.BytesIO()
-            with zipfile.ZipFile(buffer, "w") as archive:
-                for file in (args.root / "examples/demo_plugin").rglob("*"):
-                    if file.is_file():
-                        archive.write(file, "demo/" + file.relative_to(args.root / "examples/demo_plugin").as_posix())
-            req = {"plugin_name": "demo_plugin", "repository": "https://github.com/example/demo-plugin", "tag": "v0.1.0"}
-            result, source = validate(root, req, args.work, static_only=True, archive_data=buffer.getvalue(), commit="a" * 40)
-            print(json.dumps({"status": result["status"], "fingerprint": result["fingerprint"], "note": "本地离线静态演示；未访问 GitHub、未调用 AI、未安装依赖或验证插件运行，不能用于批准"}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
