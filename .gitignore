@@ -9,3 +9,4 @@ build/
 dist/
 /tests/
 /.github/workflows/tests.yml
+/AGENTS.md
