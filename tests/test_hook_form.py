@@ -1,5 +1,5 @@
 from pathlib import Path
-import json
+import re
 import yaml
 from market.cli import issue_request
 
@@ -13,14 +13,19 @@ def test_hook_choices_match_published_contracts():
     assert "multiple" not in field["attributes"]
     assert field["validations"]["required"] is True
     assert "default" not in field["attributes"]
-    hooks = json.loads((ROOT / "docs/hook-contracts.json").read_text(encoding="utf-8"))["hooks"]
-    assert [option["label"] for option in field["attributes"]["options"]] == [
-        h["id"] + " — " + h["label"] for h in hooks
-    ]
-    assert all(not option.get("required", False) for option in field["attributes"]["options"])
     text = (ROOT / "docs/hook-contracts.md").read_text(encoding="utf-8")
-    assert all("## " + h["id"] in text for h in hooks)
-    assert all("input" in h and "result" in h for h in hooks if h["kind"] == "lifecycle")
+    listing = text.split("## 选择接入点\n", 1)[1].split("\n## ", 1)[0]
+    hooks = re.findall(r"^\| \[([A-Z][A-Z0-9_]*)\]\(#([a-z0-9_]+)\) \| ([^|]+) \| ([^|]+) \|$", listing, re.M)
+    assert hooks, "文档必须包含公开 Hook 清单"
+    assert len({hook[0] for hook in hooks}) == len(hooks), "文档 Hook 清单不得重复"
+    expected = {hook_id: label.strip() for hook_id, _, _, label in hooks}
+    options = [option["label"].split(" — ", 1) for option in field["attributes"]["options"]]
+    assert len(options) == len(hooks)
+    assert dict(options) == expected
+    assert all(anchor == hook_id.lower() for hook_id, anchor, _, _ in hooks)
+    headings = re.findall(r"^## ([A-Z][A-Z0-9_]*)$", text, re.M)
+    assert set(headings) == set(expected)
+    assert all(not option.get("required", False) for option in field["attributes"]["options"])
     assert any("hook-contracts.md" in item.get("attributes", {}).get("value", "") for item in form["body"])
 
 
