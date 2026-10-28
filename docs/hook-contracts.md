@@ -52,13 +52,29 @@ flowchart TD
     prompt --> reply["模型结合本轮信息生成回答"]
     reference --> reply
     original --> reply
-    need -->|PFC 规划模型需要工具| tools["模型按需选择并调用工具<br/>PFC_CONTEXT_GATHERING"]
-    tools --> result["结果交回模型，帮助决定下一步"]
-    result --> reuse["成功取得的文字资料<br/>还可供本轮回复参考"]
 
     click context "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#before_reply_context" "查看回复资料说明"
     click knowledge "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#knowledge_query" "查看知识查询说明"
     click web "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_step_web_search" "查看联网摘要说明"
+```
+
+### 记忆术语补充
+
+```mermaid
+flowchart LR
+    memory["记忆总结需要解释术语"] --> lookup["查询术语<br/>MEMORY_TERM_LOOKUP"]
+    lookup --> summary["有解释则补充，继续记忆总结"]
+
+    click lookup "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#memory_term_lookup" "查看术语查询说明"
+```
+
+### PFC 模型工具
+
+```mermaid
+flowchart LR
+    planning["PFC 规划"] --> tools["模型按需选择并调用工具<br/>PFC_CONTEXT_GATHERING"]
+    tools --> result["结果交回模型，继续规划"]
+
     click tools "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#pfc_context_gathering" "查看模型工具说明"
 ```
 
