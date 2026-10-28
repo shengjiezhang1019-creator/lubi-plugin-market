@@ -28,9 +28,10 @@ AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，示例真实审核及正
 ## 本地开始
 
 ```powershell
-python -m pip install -e '.[dev]'
-python -m pytest -q
+python -m pip install -e .
 ```
+
+测试文件仅保留在维护者本地，不随仓库上传，也不运行 GitHub 自动测试。本地已有 `tests/` 时，可安装 `.[dev]` 后运行 `python -m pytest -q`。
 
 完整远程验证（先完成下面的配置）：
 
