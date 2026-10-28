@@ -10,33 +10,18 @@ Issue 表单用于声明插件实际使用的 Hook，不会建立绑定。普通
 
 先看要处理哪一步，再选择对应 Hook。下面是接入位置示意，不表示每条消息都会经过全部节点。图中的 Hook 名称可点击，跳到本页详细说明。
 
-### 弹幕回复主路径
+### 弹幕回复与资料补充
 
-下面展示聊天弹幕进入自动回复流程后的筛选和回复路径。普通聊天及其他事件会走各自的入口和处理流程。
+下面合并展示弹幕筛选、资料补充和回复生成的接入位置，省略宿主内部调度。资料按需补充，并非必须依次调用；没有补充资料时按已有信息继续回答。
 
 ```mermaid
 flowchart TD
     incoming["收到聊天弹幕"] --> collect["积累一批弹幕"]
     collect --> select["挑选值得关注的消息<br/>BARRAGE_PROCESSING"]
     select --> picked{"本轮有可用的选中消息？"}
-    picked -->|否或处理失败| skip["本轮不回复，等待后续轮次"]
-    picked -->|是| decision{"系统决定怎么处理"}
-    decision -->|不回复| finish["结束本轮"]
-    decision -->|正在忙| queue["等待后续处理<br/>等得太久则跳过"]
-    decision -->|回复| prepare["准备回复所需资料<br/>详见下方资料补充图"]
-    prepare --> generate["生成完整回复"]
-    generate --> send["通过后续发送判断后发出回复"]
-
-    click select "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_processing" "查看弹幕筛选说明"
-```
-
-### 资料怎样进入回答
-
-这些是不同的补充入口，并非必须依次调用。没有补充资料时通常按已有信息继续回答。
-
-```mermaid
-flowchart TD
-    need["本轮需要补充什么？"]
+    picked -->|否或处理失败| skip["等待后续轮次"]
+    picked -->|进入回复流程| need["本轮需要补充什么？"]
+    need -->|无需补充| original["按已有信息继续"]
     need -->|回复参考资料| context["插件提供资料<br/>BEFORE_REPLY_CONTEXT"]
     context --> contextok{"资料有效？"}
     contextok -->|是| prompt["资料加在回复目标后面"]
@@ -52,7 +37,9 @@ flowchart TD
     prompt --> reply["模型结合本轮信息生成回答"]
     reference --> reply
     original --> reply
+    reply --> send["通过后续发送判断后发出回复"]
 
+    click select "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_processing" "查看弹幕筛选说明"
     click context "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#before_reply_context" "查看回复资料说明"
     click knowledge "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#knowledge_query" "查看知识查询说明"
     click web "https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md#barrage_step_web_search" "查看联网摘要说明"
