@@ -23,19 +23,14 @@ flowchart TD
     picked -->|进入回复流程| need["本轮需要补充什么？"]
     need -->|无需补充| original["按已有信息继续"]
     need -->|回复参考资料| context["插件提供资料<br/>BEFORE_REPLY_CONTEXT"]
-    context --> contextok{"资料有效？"}
-    contextok -->|是| prompt["资料加在回复目标后面"]
-    contextok -->|否| original["按已有信息继续"]
     need -->|本地知识| knowledge["插件查询知识<br/>KNOWLEDGE_QUERY"]
-    knowledge --> knowledgeok{"查到对应资料？"}
-    knowledgeok -->|是| reference["作为回答的参考资料"]
-    knowledgeok -->|否| original
     need -->|弹幕检索步骤需要联网| web["插件提供搜索摘要<br/>BARRAGE_STEP_WEB_SEARCH"]
-    web --> webok{"摘要有效？"}
-    webok -->|是| reference
-    webok -->|否| original
-    prompt --> reply["模型结合本轮信息生成回答"]
-    reference --> reply
+    context --> usable{"有可用资料？"}
+    knowledge --> usable
+    web --> usable
+    usable -->|是| reference["作为回答的参考资料"]
+    usable -->|否| original
+    reference --> reply["模型结合本轮信息生成回答"]
     original --> reply
     reply --> send["通过后续发送判断后发出回复"]
 
