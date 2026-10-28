@@ -10,3 +10,5 @@ dist/
 /tests/
 /.github/workflows/tests.yml
 /AGENTS.md
+/pytest.ini
+/requirements-test.txt

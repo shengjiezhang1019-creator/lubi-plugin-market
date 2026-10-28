@@ -31,7 +31,7 @@ AI 审核服务已配置百炼 `deepseek-v4-pro-0813`，示例真实审核及正
 python -m pip install -e .
 ```
 
-测试文件仅保留在维护者本地，不随仓库上传，也不运行 GitHub 自动测试。本地已有 `tests/` 时，可安装 `.[dev]` 后运行 `python -m pytest -q`。
+测试文件、`pytest.ini` 和 `requirements-test.txt` 仅保留在维护者本地，不随仓库上传，也不运行 GitHub 自动测试。本地文件齐备时，运行 `python -m pip install -r requirements-test.txt` 安装测试依赖，再运行 `python -m pytest -q`。
 
 完整远程验证（先完成下面的配置）：
 

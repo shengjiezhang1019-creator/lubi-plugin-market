@@ -5,19 +5,12 @@ description = "露比 GitHub 插件市场：验证、AI 辅助审核与人工批
 requires-python = ">=3.11"
 dependencies = ["cryptography>=43", "PyNaCl>=1.5,<2", "jsonschema>=4.23,<5", "packaging>=24,<27"]
 
-[project.optional-dependencies]
-dev = ["pytest>=8,<10", "PyYAML>=6,<7"]
-
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["market*"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
 
 [tool.ruff]
 line-length = 120
