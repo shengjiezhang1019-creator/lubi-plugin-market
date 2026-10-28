@@ -32,7 +32,8 @@ body:
         请选择插件代码中实际使用的 Hook，可多选。
         [查看 Hook 流程图、作用与输入输出说明](https://github.com/shengjiezhang1019-creator/lubi-plugin-market/blob/main/docs/hook-contracts.md)。
 
-        此处选择仅用于审核说明，不会自动建立绑定。
+        市场会与源码中的绑定声明进行静态对比，差异或无法确认的情况提示人工核实。
+        此处选择不会自动建立绑定，实际挂载以插件代码及宿主加载结果为准。
   - type: checkboxes
     id: hooks
     attributes:

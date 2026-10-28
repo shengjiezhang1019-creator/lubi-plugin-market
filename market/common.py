@@ -58,8 +58,16 @@ def repository(value):
 
 
 def validate_request(request):
-    if set(request) != {"plugin_name", "repository", "tag"}:
-        raise ValueError("申请必须且只能包含 plugin_name、repository、tag")
+    required = {"plugin_name", "repository", "tag"}
+    if not required <= set(request) or set(request) - required - {"hooks"}:
+        raise ValueError("申请必须包含 plugin_name、repository、tag，仅可额外提供 hooks")
+    if "hooks" in request:
+        hooks = request["hooks"]
+        if not isinstance(hooks, list) or any(
+            not isinstance(hook, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", hook) for hook in hooks
+        ):
+            raise ValueError("hooks 必须为 Hook 名称数组")
+        request = {**request, "hooks": sorted(set(hooks))}
     if not NAME.fullmatch(request["plugin_name"]):
         raise ValueError("插件名不合法")
     version = str(request["tag"]).removeprefix("v")

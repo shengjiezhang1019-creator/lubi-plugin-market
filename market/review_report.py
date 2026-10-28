@@ -62,6 +62,21 @@ def render_review(validation, ai, request):
                   "**证据**", "", text(finding.get("evidence", "")), "",
                   "**可能影响**", "", text(finding.get("impact", "")), "",
                   "**AI 修改建议（待人工核实）**", "", text(finding.get("suggestion", "")), ""]
+    hooks = validation.get("hook_analysis")
+    if hooks is not None:
+        def hook_list(values):
+            return text(", ".join(values) or "无")
+
+        lines += ["### Hook 申报核对", "", "| 项目 | 内容 |", "| --- | --- |",
+                  "| 对比结果 | " + ("静态集合一致" if hooks["status"] == "consistent" else "需人工核实") + " |",
+                  "| Issue 申报 | " + (hook_list(hooks["declared"]) if hooks["declared"] is not None else "未提供") + " |",
+                  "| 源码静态发现 | " + hook_list(hooks["observed"]) + " |",
+                  "| 已申报但未发现 | " + hook_list(hooks["declared_not_observed"]) + " |",
+                  "| 已发现但未申报 | " + hook_list(hooks["observed_not_declared"]) + " |", "",
+                  "静态集合一致也不证明已挂载；不一致或无法确认时由维护者核实，不据此自动拦截。"]
+        for item in hooks["evidence"]:
+            lines += ["- " + text(f"{item['file']}:{item['line']} — {item['hook']}")]
+        lines += ["- " + text(warning) for warning in hooks["warnings"]]
     if warnings:
         lines += ["### 静态检查提示", ""]
         for warning in warnings:

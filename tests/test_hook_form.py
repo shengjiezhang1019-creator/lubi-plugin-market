@@ -24,12 +24,12 @@ def test_hook_choices_match_published_contracts():
     assert any("hook-contracts.md" in item.get("attributes", {}).get("value", "") for item in form["body"])
 
 
-def test_extra_hook_field_keeps_request_contract_unchanged():
+def test_unchecked_free_text_is_not_a_hook_selection():
     body = "### 插件名称\n\ndemo\n\n### GitHub 仓库\n\nhttps://github.com/a/demo\n\n### Release 标签\n\nv1.0.0\n\n### 使用的 Hook\n\nBEFORE_REPLY_CONTEXT — 回复前补充参考资料"
-    assert issue_request(body) == {"plugin_name": "demo", "repository": "https://github.com/a/demo", "tag": "v1.0.0"}
+    assert issue_request(body) == {"plugin_name": "demo", "repository": "https://github.com/a/demo", "tag": "v1.0.0", "hooks": []}
 
 
-def test_multiple_checked_hooks_keep_request_contract_unchanged():
+def test_only_checked_hooks_enter_request():
     body = (
         "### 插件名称\n\ndemo\n\n### GitHub 仓库\n\nhttps://github.com/a/demo"
         "\n\n### Release 标签\n\nv1.0.0\n\n### 使用的 Hook\n\n"
@@ -37,4 +37,5 @@ def test_multiple_checked_hooks_keep_request_contract_unchanged():
         "- [ ] MESSAGE_INGRESS — 转换或拒绝外部平台消息\n"
         "- [x] KNOWLEDGE_QUERY — 查询知识并提供后续模型参考资料"
     )
-    assert issue_request(body) == {"plugin_name": "demo", "repository": "https://github.com/a/demo", "tag": "v1.0.0"}
+    assert issue_request(body) == {"plugin_name": "demo", "repository": "https://github.com/a/demo", "tag": "v1.0.0",
+                                   "hooks": ["BEFORE_REPLY_CONTEXT", "KNOWLEDGE_QUERY"]}

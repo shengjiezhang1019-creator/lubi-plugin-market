@@ -63,7 +63,7 @@ def test_report_binds_bundled_rules_without_external_host(tmp_path):
 def test_changed_rule_content_changes_fingerprint(tmp_path, monkeypatch):
     from market import validation
 
-    for name in ("__init__.py", "manifest_schema.json", "static_checks.py", "component_types.py"):
+    for name in ("__init__.py", "manifest_schema.json", "static_checks.py", "component_types.py", "hook_bindings.py"):
         (tmp_path / name).write_text("original", encoding="utf-8")
     monkeypatch.setattr(validation, "RULES_DIR", tmp_path)
     before = rules_fingerprint()

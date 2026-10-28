@@ -40,6 +40,10 @@ def issue_request(body):
         if not match:
             raise ValueError(f"申请缺少 {label}")
         fields[field] = match[1].strip()
+    from .rules.hook_bindings import parse_declared_hooks
+    hooks = parse_declared_hooks(body)
+    if hooks is not None:
+        fields["hooks"] = hooks
     return validate_request(fields)
 
 
