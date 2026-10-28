@@ -71,7 +71,6 @@ flowchart TD
 | [KNOWLEDGE_QUERY](#knowledge_query) | 上下文补充 | 查询知识并提供后续模型参考资料 |
 | [BARRAGE_STEP_WEB_SEARCH](#barrage_step_web_search) | 上下文补充 | 提供弹幕检索步骤的联网摘要 |
 | [MEMORY_TERM_LOOKUP](#memory_term_lookup) | 语义结果补充 | 查询术语并补充记忆语义结果 |
-| [DOUYIN_LIVE_CONTROL](#douyin_live_control) | 状态控制 | 启动、停止或查询抖音直播来源 |
 | [PFC_CONTEXT_GATHERING](#pfc_context_gathering) | 模型工具 | 供 PFC 模型选择并调用插件工具 |
 
 ## 阅读方式
@@ -465,94 +464,6 @@ flowchart TD
 
 </details>
 
-## DOUYIN_LIVE_CONTROL
-
-**启动、停止或查询抖音直播来源** · 状态控制
-
-```text
-请求管理直播来源
-  ├─ 启动 → 启动成功 → 开始接收指定直播间的消息
-  │          └─ 启动失败或插件不可用 → 返回错误，不保留本次新建的场次
-  ├─ 停止 → 停止接收消息 → 按要求保留或结束直播场次
-  └─ 查询 → 返回当前状态，同时清理已关闭的直播来源
-             └─ 插件不可用 → 显示来源不可用
-```
-
-| 数据 | 内容 |
-| --- | --- |
-| 返回后会发生什么 | 启动时开始接收指定直播间的消息；停止时停止接收并按要求结束场次；查询时展示当前状态，同时清理已关闭的直播来源。 |
-| 无可用结果时 | 无绑定时 status 返回不可用、stop 返回空成功、start 报不可用。 |
-
-### 传入字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与来源 |
-| --- | --- | --- |
-| `operation` | string；必填 | 管理操作 允许值：start / stop / status。 |
-| `params` | object；必填 | 按操作分别校验的参数 |
-
-### 返回字段逐项说明
-
-| 字段 | 类型 / 必填与空值 | 含义与约束 | 返回后会发生什么 |
-| --- | --- | --- | --- |
-| `result` | object；必填 | 纯 JSON 管理结果 | 启动时开始接收指定直播间的消息；停止时停止接收并按要求结束场次；查询时展示当前状态，同时清理已关闭的直播来源。 |
-
-<details>
-<summary>展开完整输入输出契约、约束与绑定数量</summary>
-
-管理抖音监听：start / stop / status；参数按 operation 分别校验
-
-允许的组件类型：command, tool。
-
-绑定数量：最少 0，最多 1。
-
-输入契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "operation": {
-      "type": "string",
-      "description": "管理操作",
-      "constraints": {
-        "enum": [
-          "start",
-          "stop",
-          "status"
-        ]
-      }
-    },
-    "params": {
-      "type": "object",
-      "description": "按操作分别校验的参数",
-      "constraints": {
-        "properties": {},
-        "allow_extra": true
-      }
-    }
-  }
-}
-```
-
-返回 data 契约：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "result": {
-      "type": "object",
-      "description": "纯 JSON 管理结果",
-      "constraints": {
-        "properties": {},
-        "allow_extra": true
-      }
-    }
-  }
-}
-```
-
-</details>
 
 ## KNOWLEDGE_QUERY
 

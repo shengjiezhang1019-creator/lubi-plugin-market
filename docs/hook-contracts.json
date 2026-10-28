@@ -222,55 +222,6 @@
       "label": "向回复 Prompt 追加参考资料"
     },
     {
-      "id": "DOUYIN_LIVE_CONTROL",
-      "description": "管理抖音监听：start / stop / status；参数按 operation 分别校验",
-      "kind": "lifecycle",
-      "components": [
-        "command",
-        "tool"
-      ],
-      "min_bindings": 0,
-      "max_bindings": 1,
-      "input": {
-        "type": "object",
-        "properties": {
-          "operation": {
-            "type": "string",
-            "description": "管理操作",
-            "constraints": {
-              "enum": [
-                "start",
-                "stop",
-                "status"
-              ]
-            }
-          },
-          "params": {
-            "type": "object",
-            "description": "按操作分别校验的参数",
-            "constraints": {
-              "properties": {},
-              "allow_extra": true
-            }
-          }
-        }
-      },
-      "result": {
-        "type": "object",
-        "properties": {
-          "result": {
-            "type": "object",
-            "description": "纯 JSON 管理结果",
-            "constraints": {
-              "properties": {},
-              "allow_extra": true
-            }
-          }
-        }
-      },
-      "label": "启动、停止或查询抖音直播来源"
-    },
-    {
       "id": "KNOWLEDGE_QUERY",
       "description": "查询本地知识；可选单绑定，无默认目标，缺绑定或失败时不补充知识，主流程继续",
       "kind": "lifecycle",
