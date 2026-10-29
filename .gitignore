@@ -12,3 +12,4 @@ dist/
 /AGENTS.md
 /pytest.ini
 /requirements-test.txt
+/docs/PLUGIN_SECURITY.md
